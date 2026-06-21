@@ -2,23 +2,17 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hành Trình Xanh Lâm Đồng - Game Phân Loại Rác</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hành Trình Xanh Lâm Đồng - Bản 5.0 (Âm thanh & 5 Cấp độ)</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="game-container">
-        <h1>HÀNH TRÌNH XANH BẢO VỆ MÔI TRƯỜNG</h1>
-        
-        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        <div id="lightningEffect"></div>
 
-        <div class="instructions">
-            <strong>💡 Hướng dẫn luật chơi cho các em:</strong><br>
-            • Nhấp giữ chuột (hoặc chạm tay) để <strong>kéo và thả</strong> rác vào đúng thùng.<br>
-            • <strong>Cấp độ 1:</strong> Rác rơi chậm, có hiện tên gợi ý.<br>
-            • <strong>Cấp độ 2 (Đạt trên 50 điểm):</strong> Rác rơi nhanh hơn 40%, mây bay nhanh hơn.<br>
-            • <strong>Cấp độ 3 (Đạt trên 120 điểm):</strong> Giấu chữ gợi ý, xuất hiện hiệu ứng gió thổi lượn sóng!
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
         </div>
     </div>
 
