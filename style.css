@@ -1,11 +1,11 @@
-/* Thiết lập chung loại bỏ lề và chống cuộn trang trên điện thoại */
+/* Thiết lập loại bỏ lề và chống cuộn trang tuyệt đối trên Mobile */
 html, body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: #11998e;
+    background: linear-gradient(135deg, #11998e, #38ef7d);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     -webkit-user-select: none;
     user-select: none;
@@ -19,23 +19,22 @@ body {
     min-height: 100vh;
 }
 
-/* Khung chứa game tự co giãn chuẩn tỉ lệ Mobile và PC */
+/* Khung chứa game tự responsive thông minh, bo góc mượt mà */
 .game-container {
     width: 100%;
-    max-width: 600px;
+    max-width: 500px; /* Bóp gọn chiều rộng để chuẩn tỉ lệ màn hình dọc điện thoại */
     height: 100vh;
-    max-height: 700px;
+    max-height: 750px;
     display: flex;
     flex-direction: column;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+    border-radius: 24px;
     overflow: hidden;
-    backdrop-filter: blur(10px);
     position: relative;
 }
 
-/* Vùng bao quanh bảng vẽ Canvas */
+/* Vùng bao quanh Canvas */
 #canvas-wrapper {
     flex: 1;
     position: relative;
@@ -57,13 +56,13 @@ canvas:active {
     cursor: grabbing;
 }
 
-/* --- HIỆU ỨNG ĐẶC BIỆT: CHỚP SÉT CHO VÒNG 5 --- */
+/* --- HIỆU ỨNG SẤM SÉT VÒNG 5 --- */
 @keyframes lightning-flash {
     0% { background: rgba(255, 255, 255, 0); }
-    10% { background: rgba(255, 255, 255, 0.85); }
-    15% { background: rgba(255, 255, 255, 0); }
-    20% { background: rgba(255, 255, 255, 0.9); }
-    30% { background: rgba(255, 255, 255, 0); }
+    5% { background: rgba(255, 255, 255, 0.9); }
+    10% { background: rgba(255, 255, 255, 0); }
+    15% { background: rgba(255, 255, 255, 0.95); }
+    25% { background: rgba(255, 255, 255, 0); }
     100% { background: rgba(255, 255, 255, 0); }
 }
 
@@ -75,5 +74,5 @@ canvas:active {
     height: 100%;
     pointer-events: none;
     z-index: 10;
-    animation: lightning-flash 0.6s ease-out;
+    animation: lightning-flash 0.5s ease-out;
 }
