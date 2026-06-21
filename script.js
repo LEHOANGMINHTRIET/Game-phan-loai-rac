@@ -18,7 +18,8 @@ window.addEventListener('resize', resizeCanvas);
 setTimeout(resizeCanvas, 150);
 
 // --- HỆ THỐNG TRẠNG THÁI TRÒ CHƠI ---
-let score = 0;
+let score = 0;          // Điểm phân loại rác chính thức (dùng để xét lên cấp)
+let quizScore = 0;      // Điểm thưởng từ câu hỏi trắc nghiệm (cộng dồn lúc kết thúc game)
 let lives = 3;
 let health = 100; 
 let currentLevel = 1;
@@ -26,10 +27,13 @@ let gameOver = false;
 let gameStarted = false;
 let showIntro = true;
 let levelUpTimer = 0;
-let isPaused = false; // Trạng thái tạm dừng game
+let isPaused = false; 
 
+// Trạng thái cho chế độ câu hỏi trắc nghiệm phụ giữa các cấp độ
 let inQuizMode = false;
 let currentQuiz = null;
+let quizFeedback = "";       // Lưu thông báo Đúng/Sai cho câu hỏi
+let quizFeedbackTimer = 0;  // Thời gian hiển thị thông báo Đúng/Sai trước khi đóng câu hỏi
 
 let clouds = [
     { x: 40, y: 80, speed: 0.25, size: 25 },
@@ -58,6 +62,7 @@ function startBackgroundMusic() {
         gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
         
         setInterval(() => {
+            // 🌟 ĐÃ SỬA: Tắt nhạc nền nếu đang trong Quiz Mode (inQuizMode = true)
             if (audioCtx && gameStarted && !gameOver && !inQuizMode && !isPaused) {
                 let now = audioCtx.currentTime;
                 let freq = notes[noteIdx % notes.length];
@@ -179,18 +184,19 @@ function spawnItem() {
     if (trashPool.length === 0) { replenishPool(); }
     let raw = trashPool.pop();
     
-    // Quy định số giây đếm ngược để bỏ rác vào thùng (ví dụ: cấp thấp 12 giây, cấp cao nhanh dần)
-    let maxDuration = Math.max(5, 13 - currentLevel * 1.5); 
+    // Tăng thời gian quy định cho học sinh thư thả xử lý
+    let maxDuration = Math.max(7, 15 - currentLevel * 1.5); 
 
     fallingItems.push({
         id: Math.random(),
         text: raw.text, name: raw.name, type: raw.type,
         x: Math.random() * (V_WIDTH - 140) + 70,
-        y: -40 - (fallingItems.length * 90), // Sắp xếp so le khoảng cách chiều cao cực chuẩn
+        // 🌟 ĐÃ SỬA: Tăng khoảng cách chiều cao rơi so le xa nhau rõ rệt (cách từ 150px đến 250px)
+        y: -50 - (fallingItems.length * 180), 
         angle: Math.random() * 5,
-        windShift: (Math.random() - 0.5) * 2,
-        timeLeft: maxDuration, // Thời gian còn lại (tính bằng giây)
-        maxTime: maxDuration   // Thời gian gốc để tính thanh đếm ngược tỉ lệ
+        windShift: (Math.random() - 0.5) * 1.5,
+        timeLeft: maxDuration, 
+        maxTime: maxDuration   
     });
 }
 
@@ -204,11 +210,14 @@ function rearrangeBins() {
 function triggerQuiz(level) {
     inQuizMode = true;
     currentQuiz = quizBank[level];
+    quizFeedback = "";
+    quizFeedbackTimer = 0;
 }
 
 function checkLevelProgress() {
     let newLevel = 1;
-    if (score >= 250) newLevel = 5;
+    // 🌟 ĐÃ SỬA: Khung điểm thăng cấp chuẩn xác không tính điểm thưởng cộng dồn
+    if (score >= 220) newLevel = 5;
     else if (score >= 150) newLevel = 4;
     else if (score >= 90) newLevel = 3;
     else if (score >= 40) newLevel = 2;
@@ -249,13 +258,11 @@ function createParticles(x, y, color) {
 function gameLoop() {
     ctx.clearRect(0, 0, V_WIDTH, V_HEIGHT);
 
-    // 1. ĐỔI MÀU NỀN SANG TONE MÀU XANH PASTEL DIỆU MẮT, TƯƠNG PHẢN CAO VỚI CHUỘT VÀ RÁC
     let skyGrad = ctx.createLinearGradient(0, 0, 0, V_HEIGHT);
-    skyGrad.addColorStop(0, '#eef7f6'); // Màu nền sáng dịu mint pastel dễ nhìn không mỏi mắt
+    skyGrad.addColorStop(0, '#eef7f6'); 
     skyGrad.addColorStop(1, '#d5eadd');
     ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
 
-    // Mây trôi nền nền nã
     ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
     clouds.forEach(c => {
         if (!isPaused && !showIntro && !inQuizMode && !gameOver) c.x += c.speed;
@@ -263,28 +270,24 @@ function gameLoop() {
         ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2); ctx.fill();
     });
 
-    // Thảm cỏ đáy nền
     ctx.fillStyle = "#27ae60"; ctx.fillRect(0, 580, V_WIDTH, 120);
 
-    // MÀN HÌNH CHÚ THÍCH BAN ĐẦU
     if (showIntro) {
         ctx.fillStyle = "#27ae60"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
-        ctx.fillText("HÀNH TRÌNH XANH LÂM ĐỒNG - BẢN 6.5", V_WIDTH / 2, 90);
+        ctx.fillText("HÀNH TRÌNH XANH LÂM ĐỒNG - BẢN 7.0", V_WIDTH / 2, 90);
         
         ctx.fillStyle = "rgba(255, 255, 255, 0.95)"; ctx.fillRect(25, 130, 430, 360);
         ctx.lineWidth = 2; ctx.strokeStyle = "#27ae60"; ctx.strokeRect(25, 130, 430, 360);
 
         ctx.fillStyle = "#2c3e50"; ctx.font = "13px Arial"; ctx.textAlign = "left";
         let lines = [
-            "🎮 Cập nhật: Sửa triệt để lỗi lọt rác khi đang kéo thả vật phẩm.",
-            "🎨 Giao diện: Đổi màu nền xanh dịu mắt, tăng độ tương phản chuột.",
-            "⏳ Đếm ngược: Xuất hiện thanh thời gian đếm ngược trên mỗi rác.",
+            "🏆 Khung cấp độ: Cấp 1 (40đ) | Cấp 2 (90đ) | Cấp 3 (150đ) | Cấp 4 (220đ)",
+            "🎁 Điểm trắc nghiệm (+50đ) sẽ được CỘNG DỒN khi kết thúc trò chơi.",
+            "🔇 Âm nhạc: Hệ thống tự tắt nhạc nền khi mở câu hỏi trắc nghiệm.",
+            "⏳ Tốc độ: Đã giảm tốc độ rơi dịu lại khi xuất hiện nhiều rác cùng lúc.",
+            "↕️ Khoảng cách: Vật phẩm rác xuất hiện cách xa nhau so le dễ nhìn.",
             "⏸️ Tính năng: Bấm biểu tượng [||] ở góc trên bên phải để tạm dừng.",
-            "❤️ Thanh máu HP: Thả sai hoặc hết giờ đếm ngược sẽ bị hao máu.",
-            "📊 Khung điểm thăng cấp bậc thử thách:",
-            "• Cấp 1: Rác rơi thong thả | Cấp 2: Tăng tốc độ rơi 50%",
-            "• Cấp 3: Gió lượn sóng | Cấp 4: Thêm thùng ĐỘC HẠI",
-            "• Cấp 5: SIÊU KHÓ ĐÊM GIÔNG BÃO ĐẢO VỊ TRÍ THÙNG RÁC!"
+            "📊 Cơ chế thanh máu HP: Thả sai hoặc hết giờ đếm ngược sẽ bị hao máu."
         ];
         lines.forEach((line, idx) => ctx.fillText(line, 40, 165 + idx * 28));
 
@@ -294,38 +297,59 @@ function gameLoop() {
         requestAnimationFrame(gameLoop); return;
     }
 
-    // MÀN HÌNH CÂU HỎI TRẮC NGHIỆM
+    // GIAO DIỆN MÀN HÌNH CÂU HỎI TRẮC NGHIỆM PHỤ TĂNG ĐIỂM
     if (inQuizMode && currentQuiz) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
-        ctx.fillStyle = "#f1c40f"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
-        ctx.fillText("🌟 THỬ THÁCH KIẾN THỨC MÔI TRƯỜNG 🌟", V_WIDTH / 2, 120);
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px Arial";
-        ctx.fillText(currentQuiz.q, V_WIDTH / 2, 180);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+        ctx.fillStyle = "#f1c40f"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center";
+        ctx.fillText("🌟 THỬ THÁCH KIẾN THỨC MÔI TRƯỜNG 🌟", V_WIDTH / 2, 100);
+        
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 14px Arial";
+        ctx.fillText(currentQuiz.q, V_WIDTH / 2, 160);
 
         let opts = [
-            { id: "a", text: currentQuiz.a, y: 260 },
-            { id: "b", text: currentQuiz.b, y: 330 },
-            { id: "c", text: currentQuiz.c, y: 400 }
+            { id: "a", text: currentQuiz.a, y: 230 },
+            { id: "b", text: currentQuiz.b, y: 300 },
+            { id: "c", text: currentQuiz.c, y: 370 }
         ];
 
         opts.forEach(opt => {
-            ctx.fillStyle = "#34495e"; ctx.fillRect(40, opt.y, 400, 50);
-            ctx.lineWidth = 1; ctx.strokeStyle = "#ffffff"; ctx.strokeRect(40, opt.y, 400, 50);
-            ctx.fillStyle = "#ffffff"; ctx.font = "14px Arial"; ctx.textAlign = "left";
-            ctx.fillText(opt.text, 60, opt.y + 30);
+            ctx.fillStyle = "#34495e"; ctx.fillRect(40, opt.y, 400, 48);
+            ctx.lineWidth = 1; ctx.strokeStyle = "#ffffff"; ctx.strokeRect(40, opt.y, 400, 48);
+            ctx.fillStyle = "#ffffff"; ctx.font = "13px Arial"; ctx.textAlign = "left";
+            ctx.fillText(opt.text, 60, opt.y + 28);
         });
+
+        // 🌟 ĐÃ SỬA: Vẽ thông báo phản hồi Đúng/Sai trực quan ngay trên giao diện câu hỏi
+        if (quizFeedbackTimer > 0) {
+            ctx.fillStyle = quizFeedback.includes("ĐÚNG") ? "#2ecc71" : "#e74c3c";
+            ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
+            ctx.fillText(quizFeedback, V_WIDTH / 2, 470);
+            quizFeedbackTimer--;
+            if (quizFeedbackTimer <= 0) {
+                inQuizMode = false;
+                currentQuiz = null; // Trở lại màn hình chính sau khi đọc thông báo xong
+            }
+        }
 
         requestAnimationFrame(gameLoop); return;
     }
 
-    // MÀN HÌNH GAME OVER
+    // MÀN HÌNH KẾT THÚC GAME (GAME OVER)
     if (gameOver) {
         ctx.fillStyle = "#e74c3c"; ctx.font = "bold 32px Arial"; ctx.textAlign = "center";
-        ctx.fillText("TRÒ CHƠI KẾT THÚC", V_WIDTH / 2, 250);
-        ctx.fillStyle = "#2c3e50"; ctx.font = "bold 18px Arial";
-        ctx.fillText("Tổng điểm đạt được: " + score + " Điểm", V_WIDTH / 2, 300);
-        ctx.fillStyle = "#3498db"; ctx.fillRect(160, 370, 160, 46);
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px Arial"; ctx.fillText("CHƠI LẠI", V_WIDTH / 2, 398);
+        ctx.fillText("TRÒ CHƠI KẾT THÚC", V_WIDTH / 2, 220);
+        
+        ctx.fillStyle = "#2c3e50"; ctx.font = "bold 16px Arial";
+        ctx.fillText("Điểm phân loại: " + score + " Điểm", V_WIDTH / 2, 270);
+        ctx.fillStyle = "#27ae60";
+        ctx.fillText("Điểm thưởng Trắc nghiệm: +" + quizScore + " Điểm", V_WIDTH / 2, 300);
+        
+        // 🌟 ĐÃ SỬA: Hiển thị Tổng điểm cộng dồn cuối cùng cực kỳ rõ ràng
+        ctx.fillStyle = "#d35400"; ctx.font = "bold 22px Arial";
+        ctx.fillText("TỔNG ĐIỂM CHUNG CUỘC: " + (score + quizScore) + " ĐIỂM", V_WIDTH / 2, 340);
+
+        ctx.fillStyle = "#3498db"; ctx.fillRect(160, 400, 160, 46);
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px Arial"; ctx.fillText("CHƠI LẠI", V_WIDTH / 2, 428);
         requestAnimationFrame(gameLoop); return;
     }
 
@@ -337,7 +361,6 @@ function gameLoop() {
         ctx.font = "15px Arial";
         ctx.fillText("Bấm vào biểu tượng nút ở góc trên để chơi tiếp", V_WIDTH / 2, 340);
         
-        // Vẫn vẽ nút Pause để người chơi kích hoạt bấm lại
         ctx.fillStyle = "#e67e22"; ctx.beginPath(); ctx.roundRect(pauseBtn.x, pauseBtn.y, pauseBtn.w, pauseBtn.h, 6); ctx.fill();
         ctx.fillStyle = "#ffffff"; ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
         ctx.fillText("▶", pauseBtn.x + pauseBtn.w/2, pauseBtn.y + pauseBtn.h/2 + 5);
@@ -373,14 +396,13 @@ function gameLoop() {
         ctx.fillText(bin.name, bin.x + bin.w / 2, bin.y + bin.h / 2 + 6);
     });
 
-    // 4. QUẢN LÝ ĐIỀU PHỐI RA NHIỀU RÁC ĐỒNG THỜI (TĂNG TẦN SUẤT ĐỂ RƠI SONG SONG)
+    // 4. QUẢN LÝ ĐIỀU PHỐI RA NHIỀU RÁC ĐỒNG THỜI
     let maxItemsOnScreen = 1;
     if (currentLevel === 2) maxItemsOnScreen = 2;
     if (currentLevel === 3) maxItemsOnScreen = 2;
     if (currentLevel >= 4) maxItemsOnScreen = 3; 
 
-    // Thay đổi từ 0.02 lên 0.05 để kích hoạt rác rơi liên tiếp dồn dập, so le
-    if (fallingItems.length < maxItemsOnScreen && Math.random() < 0.05) {
+    if (fallingItems.length < maxItemsOnScreen && Math.random() < 0.04) {
         spawnItem();
     }
 
@@ -388,26 +410,24 @@ function gameLoop() {
     for (let i = fallingItems.length - 1; i >= 0; i--) {
         let item = fallingItems[i];
 
-        // --- SỬA LỖI QUAN TRỌNG: Nếu đang bị kéo thả thì không tính rơi chạm đáy ---
         if (draggingItem && draggingItem.id === item.id) {
-            // Giảm thời gian đếm ngược theo thời gian thực (1 giây khoảng 60 khung hình)
             item.timeLeft -= 1/60;
         } else {
-            let fallSpeed = 0.9 + (currentLevel * 0.5);
-            if (currentLevel === 5) fallSpeed = 4.2;
+            // 🌟 ĐÃ SỬA: Hạ bớt tốc độ rơi vật lý (chậm tịnh tiến vừa tay, dễ điều khiển hơn)
+            let fallSpeed = 0.6 + (currentLevel * 0.4);
+            if (currentLevel === 5) fallSpeed = 3.5;
             item.y += fallSpeed;
-            item.timeLeft -= 1/60; // Trừ giây đếm ngược kể cả khi đang rơi tự do
+            item.timeLeft -= 1/60; 
 
             if (currentLevel === 3 || currentLevel === 4) {
-                item.angle += 0.04; item.x += Math.sin(item.angle) * 1.2;
+                item.angle += 0.03; item.x += Math.sin(item.angle) * 1.0;
             } else if (currentLevel === 5) {
-                item.angle += 0.08; item.x += Math.sin(item.angle) * 2.5 + item.windShift;
+                item.angle += 0.07; item.x += Math.sin(item.angle) * 2.0 + item.windShift;
             }
 
             if (item.x < 30) item.x = 30;
             if (item.x > V_WIDTH - 30) item.x = V_WIDTH - 30;
 
-            // Chỉ xử lý lọt rác khi vật phẩm rơi tự do chạm đất không ai cầm nắm
             if (item.y > 580) {
                 decreaseHealth(15); 
                 playSound('wrong'); showFeedback("Lọt rác mất rồi! Hao máu 😟", "#e67e22");
@@ -415,7 +435,6 @@ function gameLoop() {
             }
         }
 
-        // HẾT THỜI GIAN QUY ĐỊNH MÀ CHƯA THẢ VÀO THÙNG: Tự nổ và phạt hao máu
         if (item.timeLeft <= 0) {
             decreaseHealth(15);
             playSound('wrong'); showFeedback("Hết thời gian xử lý rác! ⏰", "#e74c3c");
@@ -423,25 +442,21 @@ function gameLoop() {
             fallingItems.splice(i, 1); continue;
         }
 
-        // Thực hiện đồ họa hiển thị rác
         ctx.save(); ctx.font = "55px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(item.text, item.x, item.y);
         
-        // Tên rác (Chữ xám đen đậm nổi bật trên nền xanh pastel)
         ctx.font = "bold 12px Arial"; ctx.fillStyle = "#2c3e50"; 
         ctx.fillText(item.name, item.x, item.y - 36);
 
-        // THANH ĐẾM NGƯỢC THỜI GIAN THEO GIÂY TRÊN ĐẦU VẬT PHẨM RÁC
         let timeBarWidth = 50;
         let progress = item.timeLeft / item.maxTime;
         ctx.fillStyle = "#bdc3c7"; ctx.fillRect(item.x - timeBarWidth/2, item.y - 52, timeBarWidth, 5);
-        ctx.fillStyle = progress > 0.4 ? "#e67e22" : "#e74c3c"; // Ít giây chuyển sang màu đỏ rực
+        ctx.fillStyle = progress > 0.4 ? "#e67e22" : "#e74c3c"; 
         ctx.fillRect(item.x - timeBarWidth/2, item.y - 52, timeBarWidth * Math.max(0, progress), 5);
 
         ctx.restore();
     }
 
-    // Hiệu ứng pháo hoa nổ bung
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.alpha -= 0.03;
         if (p.alpha <= 0) { particles.splice(i, 1); } 
@@ -480,7 +495,9 @@ function handleStart(e) {
     initAudio(); 
     const pos = getMousePos(e);
 
-    // Bấm nút Tạm dừng / Chơi tiếp trên góc phải màn hình
+    // Không nhận phản hồi bấm nút nếu đang trong lúc hiển thị kết quả đúng/sai của câu hỏi
+    if (inQuizMode && quizFeedbackTimer > 0) return;
+
     if (gameStarted && !gameOver && !inQuizMode && !showIntro) {
         if (pos.x >= pauseBtn.x && pos.x <= pauseBtn.x + pauseBtn.w &&
             pos.y >= pauseBtn.y && pos.y <= pauseBtn.y + pauseBtn.h) {
@@ -489,37 +506,42 @@ function handleStart(e) {
         }
     }
 
-    if (isPaused) return; // Đang tạm dừng thì không cho tương tác rác
+    if (isPaused) return; 
 
     if (showIntro) {
         if (pos.x >= 140 && pos.x <= 340 && pos.y >= 515 && pos.y <= 561) {
-            showIntro = false; gameStarted = true; score = 0; lives = 3; health = 100; currentLevel = 1;
+            showIntro = false; gameStarted = true; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1;
             rearrangeBins(); spawnItem();
         }
         return;
     }
 
-    if (inQuizMode && currentQuiz) {
+    // XỬ LÝ CHỌN ĐÁP ÁN TRẮC NGHIỆM
+    if (inQuizMode && currentQuiz && quizFeedbackTimer === 0) {
         let chosen = null;
         if (pos.x >= 40 && pos.x <= 440) {
-            if (pos.y >= 260 && pos.y <= 310) chosen = "a";
-            if (pos.y >= 330 && pos.y <= 380) chosen = "b";
-            if (pos.y >= 400 && pos.y <= 450) chosen = "c";
+            if (pos.y >= 230 && pos.y <= 278) chosen = "a";
+            if (pos.y >= 300 && pos.y <= 348) chosen = "b";
+            if (pos.y >= 370 && pos.y <= 418) chosen = "c";
         }
         if (chosen) {
+            // 🌟 ĐÃ SỬA: Hiện rõ thông báo Đúng/Sai trực diện và lưu điểm riêng
             if (chosen === currentQuiz.ans) {
-                score += 50; playSound('correct'); showFeedback("Xuất sắc! Trả lời đúng +50 Điểm Thưởng 🎁", "#2ecc71");
+                quizScore += 50; // Điểm lưu riêng vào mảng quizScore
+                playSound('correct');
+                quizFeedback = "🎉 ĐÚNG RỒI! BẠN ĐƯỢC TÍNH +50Đ THƯỞNG KHI KẾT THÚC";
             } else {
-                playSound('wrong'); showFeedback("Chưa chính xác rồi em ơi! 😟", "#e74c3c");
+                playSound('wrong');
+                quizFeedback = "😟 SAI RỒI! HÃY CHÚ Ý PHÂN LOẠI KỸ HƠN NHÉ EL";
             }
-            inQuizMode = false; currentQuiz = null;
+            quizFeedbackTimer = 110; // Đợi khoảng 2 giây cho học sinh đọc phản hồi rồi mới chuyển màn hình
         }
         return;
     }
 
     if (gameOver) {
         if (pos.x >= 160 && pos.x <= 320 && pos.y >= 370 && pos.y <= 416) {
-            gameOver = false; score = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = []; trashPool = [];
+            gameOver = false; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = []; trashPool = [];
             rearrangeBins(); spawnItem();
         }
         return;
