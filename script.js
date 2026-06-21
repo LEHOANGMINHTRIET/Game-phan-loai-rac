@@ -20,14 +20,13 @@ setTimeout(resizeCanvas, 150);
 // --- HỆ THỐNG TRẠNG THÁI TRÒ CHƠI ---
 let score = 0;
 let lives = 3;
-let health = 100; // Thanh máu hao dần (0 - 100%)
+let health = 100; 
 let currentLevel = 1;
 let gameOver = false;
 let gameStarted = false;
 let showIntro = true;
 let levelUpTimer = 0;
 
-// Trạng thái cho chế độ câu hỏi trắc nghiệm phụ giữa các cấp độ
 let inQuizMode = false;
 let currentQuiz = null;
 
@@ -89,39 +88,43 @@ function playSound(type) {
     } catch (e) {}
 }
 
-// --- 📦 KHO DỮ LIỆU RÁC THẢI ĐỒ SỘ (GẦN 40 LOẠI) ---
+// --- 📦 KHO DỮ LIỆU RÁC THẢI ---
 const trashData = [
+    // Hữu cơ (Organic)
     { text: "🍏", name: "Táo cắn dở", type: "organic" },
-    { text: "Banana", text: "🍌", name: "Vỏ chuối chín", type: "organic" },
+    { text: "🍌", name: "Vỏ chuối chín", type: "organic" },
     { text: "🍉", name: "Vỏ dưa hấu", type: "organic" },
-    { text: "🪵", name: "Củi khô", type: "organic" },
+    { text: "🍂", name: "Lá cây khô", type: "organic" }, // 🌟 Đã đổi từ củi khô sang Lá cây khô rực rỡ
     { text: "🥀", name: "Hoa héo", type: "organic" },
     { text: "🍃", name: "Lá chè hỏng", type: "organic" },
     { text: "🥚", name: "Vỏ trứng", type: "organic" },
     { text: "🦴", name: "Xương gà", type: "organic" },
-    { text: "🫘", name: "Hạt ngô thối", type: "organic" },
+    { text: "🌽", name: "Hạt ngô thối", type: "organic" }, 
     { text: "🥖", name: "Bánh mì mốc", type: "organic" },
 
+    // Tái chế (Recyclable)
     { text: "📦", name: "Hộp giấy vụn", type: "recyclable" },
     { text: "🍾", name: "Chai thủy tinh", type: "recyclable" },
     { text: "🥫", name: "Vỏ lon nước", type: "recyclable" },
     { text: "🥤", name: "Cốc trà sữa", type: "recyclable" },
     { text: "📰", name: "Sách báo cũ", type: "recyclable" },
-    { text: "✏️", name: "Thước nhựa hỏng", type: "recyclable" },
+    { text: "📚", name: "Sách vở cũ", type: "recyclable" }, // 🌟 Đã đổi từ hũ nhựa sang Sách vở cũ trực quan
     { text: "📎", name: "Ghim kẹp sắt", type: "recyclable" },
     { text: "🥛", name: "Vỏ hộp sữa", type: "recyclable" },
     { text: "⚙️", name: "Bánh răng sắt", type: "recyclable" },
 
+    // Vô cơ (Residual)
     { text: "🛍️", name: "Túi nilon rách", type: "residual" },
     { text: "🚬", name: "Tàn thuốc lá", type: "residual" },
-    { text: "🪞", name: "Mảnh gương vỡ", type: "residual" },
+    { text: "🧱", name: "Mảnh gương vỡ", type: "residual" }, 
     { text: "🥣", name: "Bát sứ mẻ", type: "residual" },
     { text: "👟", name: "Giày vải rách", type: "residual" },
     { text: "🧻", name: "Giấy ăn đã dùng", type: "residual" },
-    { text: "🪵", name: "Bút chì gãy", type: "residual" },
+    { text: "✏️", name: "Bút chì gãy", type: "residual" }, 
     { text: "🎈", name: "Xác bóng bay", type: "residual" },
-    { text: "🪵", name: "Túi bánh kẹo", type: "residual" },
+    { text: "🍬", name: "Túi bánh kẹo", type: "residual" }, 
 
+    // Độc hại (Hazardous)
     { text: "🔋", name: "Cục Pin hỏng", type: "medical" },
     { text: "💉", name: "Kim tiêm y tế", type: "medical" },
     { text: "😷", name: "Khẩu trang bẩn", type: "medical" },
@@ -132,7 +135,25 @@ const trashData = [
     { text: "🩹", name: "Băng gạc cũ", type: "medical" }
 ];
 
-// --- ❓ NGÂN HÀNG CÂU HỎI TRẮC NGHIỆM THƯỞNG ĐIỂM KHI LÊN CẤP ---
+// Mảng đệm dùng để quản lý bốc thăm ngẫu nhiên không trùng lặp
+let trashPool = [];
+
+function replenishPool() {
+    let available = trashData;
+    // Nếu ở cấp nhỏ, lọc bỏ rác độc hại ra khỏi bể bốc thăm
+    if (currentLevel < 4) {
+        available = trashData.filter(item => item.type !== 'medical');
+    }
+    // Sao chép mảng dữ liệu rác
+    trashPool = [...available];
+    // Thuật toán xáo trộn mảng ngẫu nhiên (Fisher-Yates Shuffle)
+    for (let i = trashPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [trashPool[i], trashPool[j]] = [trashPool[j], trashPool[i]];
+    }
+}
+
+// --- ❓ NGÂN HÀNG CÂU HỎI TRẮC NGHIỆM ---
 const quizBank = {
     2: {
         q: "Rác hữu cơ sau khi phân loại nên được xử lý thế nào?",
@@ -159,7 +180,6 @@ let bins = [
     { id: "medical", name: "ĐỘC HẠI", color1: "#e67e22", color2: "#d35400", x: 0, y: 595, w: 92, h: 80 }
 ];
 
-// Mảng quản lý nhiều loại rác rơi đồng thời
 let fallingItems = [];
 let draggingItem = null;
 let particles = [];
@@ -169,19 +189,20 @@ function showFeedback(text, color) {
     feedbackText = text; feedbackColor = color; feedbackTimer = 40;
 }
 
-// Hàm khởi sinh rác rơi ngẫu nhiên so le
+// Thuật toán bốc rác đảm bảo xoay tua hết sạch kho, không bị trùng lặp liên tục
 function spawnItem() {
-    let availableItems = trashData;
-    if (currentLevel < 4) {
-        availableItems = trashData.filter(item => item.type !== 'medical');
+    if (trashPool.length === 0) {
+        replenishPool();
     }
-    let raw = availableItems[Math.floor(Math.random() * availableItems.length)];
+    
+    // Lấy phần tử cuối cùng ra khỏi bể chứa đã xáo trộn
+    let raw = trashPool.pop();
     
     fallingItems.push({
         id: Math.random(),
         text: raw.text, name: raw.name, type: raw.type,
         x: Math.random() * (V_WIDTH - 120) + 60,
-        y: -50 - (Math.random() * 100), // Tạo độ lệch so le chiều cao khi xuất hiện cùng lúc
+        y: -50 - (Math.random() * 120), 
         angle: Math.random() * 5,
         windShift: (Math.random() - 0.5) * 2.5
     });
@@ -211,26 +232,24 @@ function checkLevelProgress() {
         levelUpTimer = 80;
         playSound('levelup');
         rearrangeBins();
-        fallingItems = []; // Dọn sạch rác cũ để chuẩn bị vào vòng mới
-        triggerQuiz(currentLevel); // Kích hoạt minigame trắc nghiệm
+        fallingItems = []; 
+        trashPool = []; // Làm trống bể chứa cũ để ép nạp lại danh sách rác phù hợp cấp độ mới
+        triggerQuiz(currentLevel); 
     }
 }
 
-// Xử lý khi người chơi bị trừ máu (Giảm thanh máu, nếu hết máu mới mất 1 mạng)
 function decreaseHealth(amount) {
     health -= amount;
     if (health <= 0) {
         lives--;
-        health = 100; // Reset thanh máu mới cho mạng tiếp theo
+        health = 100; 
         if (lives <= 0) gameOver = true;
     }
 }
 
-// --- VÒNG LẶP ĐỒ HỌA CHÍNH GAME LOOP ---
 function gameLoop() {
     ctx.clearRect(0, 0, V_WIDTH, V_HEIGHT);
 
-    // 1. QUẢN LÝ MÀU SẮC NỀN TRỜI (Tối ưu tương phản trung tính)
     let skyGrad = ctx.createLinearGradient(0, 0, 0, V_HEIGHT);
     if (currentLevel === 1) { skyGrad.addColorStop(0, '#2c3e50'); skyGrad.addColorStop(1, '#34495e'); }
     else if (currentLevel === 2) { skyGrad.addColorStop(0, '#243342'); skyGrad.addColorStop(1, '#2c3e50'); }
@@ -245,17 +264,14 @@ function gameLoop() {
     }
     ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
 
-    // Vẽ mây trôi nền
     ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
     clouds.forEach(c => {
         c.x += c.speed; if (c.x - 40 > V_WIDTH) c.x = -40;
         ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2); ctx.fill();
     });
 
-    // Thảm cỏ đáy nền
     ctx.fillStyle = "#1e824c"; ctx.fillRect(0, 580, V_WIDTH, 120);
 
-    // MÀN HÌNH CHÚ THÍCH BAN ĐẦU
     if (showIntro) {
         ctx.fillStyle = "#2ecc71"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
         ctx.fillText("HÀNH TRÌNH XANH LÂM ĐỒNG - BẢN 6.0", V_WIDTH / 2, 90);
@@ -283,17 +299,13 @@ function gameLoop() {
         requestAnimationFrame(gameLoop); return;
     }
 
-    // GIAO DIỆN MÀN HÌNH CÂU HỎI TRẮC NGHIỆM PHỤ TĂNG ĐIỂM
     if (inQuizMode && currentQuiz) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
         ctx.fillStyle = "#f1c40f"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
         ctx.fillText("🌟 THỬ THÁCH KIẾN THỨC MÔI TRƯỜNG 🌟", V_WIDTH / 2, 120);
         ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px Arial";
-        
-        // Vẽ câu hỏi tự động xuống dòng
         ctx.fillText(currentQuiz.q, V_WIDTH / 2, 180);
 
-        // Vẽ 3 ô đáp án A, B, C để học sinh bấm chọn
         let opts = [
             { id: "a", text: currentQuiz.a, y: 260 },
             { id: "b", text: currentQuiz.b, y: 330 },
@@ -310,7 +322,6 @@ function gameLoop() {
         requestAnimationFrame(gameLoop); return;
     }
 
-    // MÀN HÌNH GAME OVER
     if (gameOver) {
         ctx.fillStyle = "#e74c3c"; ctx.font = "bold 32px Arial"; ctx.textAlign = "center";
         ctx.fillText("TRÒ CHƠI KẾT THÚC", V_WIDTH / 2, 250);
@@ -321,19 +332,16 @@ function gameLoop() {
         requestAnimationFrame(gameLoop); return;
     }
 
-    // 2. HIỂN THỊ CHỈ SỐ HUD VÀ THANH MÁU (HP BAR)
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 14px Arial"; ctx.textAlign = "left";
     ctx.fillText("🏆 ĐIỂM: " + score, 20, 35);
     ctx.fillText("⚡ CẤP ĐỘ: " + currentLevel, 20, 58);
     ctx.textAlign = "right"; ctx.fillText("MẠNG: " + "❤️".repeat(lives), V_WIDTH - 20, 35);
     
-    // Vẽ khung thanh máu trực quan sinh động
     ctx.textAlign = "left"; ctx.fillText("HP: ", 250, 58);
     ctx.fillStyle = "#7f8c8d"; ctx.fillRect(285, 47, 170, 14);
-    ctx.fillStyle = health > 30 ? "#2ecc71" : "#e74c3c"; // Ít máu chuyển màu đỏ cảnh báo
+    ctx.fillStyle = health > 30 ? "#2ecc71" : "#e74c3c"; 
     ctx.fillRect(285, 47, (health / 100) * 170, 14);
 
-    // 3. VẼ HỆ THỐNG THÙNG RÁC CĂN ĐỀU 3D
     let activeCount = (currentLevel >= 4) ? 4 : 3;
     let activeBins = bins.slice(0, activeCount);
 
@@ -346,29 +354,25 @@ function gameLoop() {
         ctx.fillText(bin.name, bin.x + bin.w / 2, bin.y + bin.h / 2 + 6);
     });
 
-    // 4. QUẢN LÝ ĐIỀU PHỐI SỐ LƯỢNG RÁC XUẤT HIỆN SONG SONG GIỮA CÁC VÒNG
     let maxItemsOnScreen = 1;
     if (currentLevel === 2) maxItemsOnScreen = 2;
     if (currentLevel === 3) maxItemsOnScreen = 2;
-    if (currentLevel >= 4) maxItemsOnScreen = 3; // Cấp 4 và 5 rớt đồng thời 3 cái so le
+    if (currentLevel >= 4) maxItemsOnScreen = 3; 
 
     if (fallingItems.length < maxItemsOnScreen && Math.random() < 0.02) {
         spawnItem();
     }
 
-    // VÒNG LẶP XỬ LÝ DI CHUYỂN VÀ VẼ TỪNG LOẠI RÁC ĐANG RƠI
     for (let i = fallingItems.length - 1; i >= 0; i--) {
         let item = fallingItems[i];
 
         if (draggingItem && draggingItem.id === item.id) {
-            // Đang bị kéo thả thì cập nhật theo tọa độ tay người chơi
+            // Theo tọa độ chuột/tay vuốt
         } else {
-            // Tốc độ rơi vật lý tịnh tiến
             let fallSpeed = 1.1 + (currentLevel * 0.7);
             if (currentLevel === 5) fallSpeed = 5.2;
             item.y += fallSpeed;
 
-            // Quỹ đạo bay nâng cao
             if (currentLevel === 3 || currentLevel === 4) {
                 item.angle += 0.05; item.x += Math.sin(item.angle) * 1.5;
             } else if (currentLevel === 5) {
@@ -378,25 +382,21 @@ function gameLoop() {
             if (item.x < 25) item.x = 25;
             if (item.x > V_WIDTH - 25) item.x = V_WIDTH - 25;
 
-            // Để lọt rác chạm đất sẽ bị trừ một lượng máu nhất định
             if (item.y > 580) {
-                decreaseHealth(15); // Hao 15% thanh máu
+                decreaseHealth(15); 
                 playSound('wrong'); showFeedback("Lọt rác mất rồi! Hao máu 😟", "#e67e22");
                 fallingItems.splice(i, 1); continue;
             }
         }
 
-        // Thực hiện vẽ đồ họa rác (Phóng to kích cỡ lên 55px bắt mắt)
         ctx.save(); ctx.font = "55px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(item.text, item.x, item.y);
         
-        // HIỂN THỊ CHỮ TÊN RÁC TRỰC QUAN XUYÊN SUỐT MỌI CẤP ĐỘ
-        ctx.font = "bold 12px Arial"; ctx.fillStyle = "#ffffff"; // Đổi chữ màu trắng để nổi bật trên nền tối
+        ctx.font = "bold 12px Arial"; ctx.fillStyle = "#ffffff"; 
         ctx.fillText(item.name, item.x, item.y - 36);
         ctx.restore();
     }
 
-    // 5. HIỆU ỨNG HẠT PHÁO HOA NỔ NỀN
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.alpha -= 0.03;
         if (p.alpha <= 0) { particles.splice(i, 1); } 
@@ -406,7 +406,6 @@ function gameLoop() {
         }
     }
 
-    // 6. CHỮ PHẢN HỒI NHANH VÀ LÊN CẤP
     if (feedbackTimer > 0) {
         ctx.fillStyle = feedbackColor; ctx.font = "bold 16px Arial"; ctx.textAlign = "center";
         ctx.fillText(feedbackText, V_WIDTH / 2, 135); feedbackTimer--;
@@ -421,7 +420,6 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// --- THAO TÁC ĐIỀU KHIỂN CHUỘT / CẢM ỨNG DI ĐỘNG ---
 function getMousePos(e) {
     const rect = canvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -437,7 +435,6 @@ function handleStart(e) {
     initAudio(); 
     const pos = getMousePos(e);
 
-    // Click ở màn hình hướng dẫn ban đầu
     if (showIntro) {
         if (pos.x >= 140 && pos.x <= 340 && pos.y >= 515 && pos.y <= 561) {
             showIntro = false; gameStarted = true; score = 0; lives = 3; health = 100; currentLevel = 1;
@@ -446,7 +443,6 @@ function handleStart(e) {
         return;
     }
 
-    // Click chọn câu trả lời ở màn hình trắc nghiệm phụ
     if (inQuizMode && currentQuiz) {
         let chosen = null;
         if (pos.x >= 40 && pos.x <= 440) {
@@ -460,26 +456,23 @@ function handleStart(e) {
             } else {
                 playSound('wrong'); showFeedback("Chưa chính xác rồi em ơi! 😟", "#e74c3c");
             }
-            // Kết thúc chế độ trắc nghiệm, quay lại chơi tiếp game chính
             inQuizMode = false; currentQuiz = null;
         }
         return;
     }
 
-    // Click ở màn hình Game Over
     if (gameOver) {
         if (pos.x >= 160 && pos.x <= 320 && pos.y >= 370 && pos.y <= 416) {
-            gameOver = false; score = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = [];
+            gameOver = false; score = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = []; trashPool = [];
             rearrangeBins(); spawnItem();
         }
         return;
     }
 
-    // Tìm xem người dùng nhấn trúng vật phẩm rác nào trong danh sách đang rơi
     for (let i = fallingItems.length - 1; i >= 0; i--) {
         let item = fallingItems[i];
         const dist = Math.hypot(pos.x - item.x, pos.y - item.y);
-        if (dist < 42) { // Vùng va chạm tương tác mở rộng theo rác to
+        if (dist < 42) { 
             draggingItem = item;
             dragOffsetX = pos.x - item.x; dragOffsetY = pos.y - item.y;
             if (e.cancelable) e.preventDefault();
@@ -513,10 +506,9 @@ function handleEnd() {
     if (matchedBin) {
         if (item.type === matchedBin.id) {
             score += 10; playSound('correct');
-            createParticles(item.x, item.y, matchedBin.color1);
+            createParticles(item.x, item.y, binColor(matchedBin.id));
             showFeedback("Chính xác! +10 Điểm 🎉", "#2ecc71");
             
-            // Xóa rác này khỏi mảng rơi
             fallingItems = fallingItems.filter(i => i.id !== item.id);
             checkLevelProgress();
             
@@ -524,11 +516,16 @@ function handleEnd() {
                 bins.sort(() => Math.random() - 0.5); rearrangeBins();
             }
         } else {
-            decreaseHealth(15); // Bỏ sai thùng: Hao 15% thanh máu HP
+            decreaseHealth(15); 
             playSound('wrong'); showFeedback("Nhầm thùng rồi em ơi! 😟", "#e74c3c");
             fallingItems = fallingItems.filter(i => i.id !== item.id);
         }
     }
+}
+
+function binColor(id) {
+    if (id === 'organic') return '#2ecc71'; if (id === 'recyclable') return '#3498db';
+    if (id === 'residual') return '#95a5a6'; return '#e67e22';
 }
 
 canvas.addEventListener('mousedown', handleStart);
