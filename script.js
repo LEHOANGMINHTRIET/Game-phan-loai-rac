@@ -1,6 +1,9 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const lightningEffect = document.getElementById('lightningEffect');
+const wrapper = document.getElementById('canvas-wrapper');
+
+// Tạo một biến rỗng ở ngoài để cấu trúc toàn cục nhận diện
+let lightningEffect = null;
 
 // --- HỆ THỐNG TRẠNG THÁI GAME & PHÂN CẤP ĐỘ ---
 let score = 0;
@@ -138,9 +141,42 @@ function getMousePos(e) {
 }
 
 function handleStart(e) {
+    // ⚡ KÍCH HOẠT LẤY PHẦN TỬ SẤM SÉT AN TOÀN NGAY KHI CÓ TƯƠNG TÁC
+    if (!lightningEffect) {
+        lightningEffect = document.getElementById('lightningEffect');
+    }
+
     initAudio(); // Kích hoạt hệ thống âm thanh khi người dùng chạm tay vào màn hình lần đầu
-    if (gameOver || !gameStarted) return;
+
+    // SỬA LỖI TRANG TRẮNG: Xử lý click chuột khi đang ở màn hình Menu Intro hoặc Game Over trước
     const pos = getMousePos(e);
+
+    if (showIntro) {
+        // Kiểm tra nếu bấm trúng nút "BẮT ĐẦU THỬ THÁCH" (Tọa độ X: 200->400, Y: 520->570)
+        if (pos.x >= 200 && pos.x <= 400 && pos.y >= 520 && pos.y <= 570) {
+            showIntro = false;
+            gameStarted = true;
+            score = 0;
+            lives = 3;
+            currentLevel = 1;
+            spawnNewItem();
+        }
+        return;
+    }
+
+    if (gameOver) {
+        // Kiểm tra nếu bấm trúng nút "CHƠI LẠI" (Tọa độ X: 220->380, Y: 380->430)
+        if (pos.x >= 220 && pos.x <= 380 && pos.y >= 380 && pos.y <= 430) {
+            gameOver = false;
+            score = 0;
+            lives = 3;
+            currentLevel = 1;
+            spawnNewItem();
+        }
+        return;
+    }
+
+    // Nếu game đang chơi bình thường thì mới xử lý kéo thả rác dưới đây
     if (currentItem) {
         const dist = Math.hypot(pos.x - currentItem.x, pos.y - currentItem.y);
         if (dist < 40) {
