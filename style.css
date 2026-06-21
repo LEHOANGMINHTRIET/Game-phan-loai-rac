@@ -1,11 +1,10 @@
-/* Thiết lập loại bỏ lề và chống cuộn trang tuyệt đối trên Mobile */
 html, body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: linear-gradient(135deg, #11998e, #38ef7d);
+    background: linear-gradient(135deg, #1e3c72, #2a5298); /* Đổi màu nền ngoài tối hơn để nổi bật con chuột */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     -webkit-user-select: none;
     user-select: none;
@@ -19,22 +18,20 @@ body {
     min-height: 100vh;
 }
 
-/* Khung chứa game tự responsive thông minh, bo góc mượt mà */
 .game-container {
     width: 100%;
-    max-width: 500px; /* Bóp gọn chiều rộng để chuẩn tỉ lệ màn hình dọc điện thoại */
+    max-width: 500px;
     height: 100vh;
     max-height: 750px;
     display: flex;
     flex-direction: column;
-    background: #ffffff;
-    box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+    background: #202020; /* Màu nền hộp game tối để tương phản mạnh với rác */
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
     border-radius: 24px;
     overflow: hidden;
     position: relative;
 }
 
-/* Vùng bao quanh Canvas */
 #canvas-wrapper {
     flex: 1;
     position: relative;
@@ -49,11 +46,7 @@ canvas {
     width: 100%;
     height: 100%;
     display: block;
-    cursor: grab;
-}
-
-canvas:active {
-    cursor: grabbing;
+    cursor: cell; /* Đổi hình dáng con chuột thành dạng hồng tâm/chữ thập dễ nhìn */
 }
 
 /* --- HIỆU ỨNG SẤM SÉT VÒNG 5 --- */
