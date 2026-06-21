@@ -1,0 +1,51 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #a8ff78, #78ffd6); /* Nền dải màu rực rỡ */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #2c3e50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.game-container {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    margin: 20px;
+    max-width: 650px;
+    backdrop-filter: blur(5px);
+}
+
+h1 {
+    margin-top: 0;
+    color: #1b5e20;
+    font-size: 26px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+#gameCanvas {
+    background: #ffffff;
+    border: 4px solid #1b5e20;
+    border-radius: 12px;
+    cursor: grab;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+#gameCanvas:active {
+    cursor: grabbing;
+}
+
+.instructions {
+    text-align: left;
+    margin-top: 15px;
+    background: #f1f8e9;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border-left: 6px solid #4caf50;
+}
