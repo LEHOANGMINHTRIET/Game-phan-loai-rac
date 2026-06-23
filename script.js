@@ -185,7 +185,7 @@ function playSound(type) {
     } catch (e) {}
 }
 
-// --- 📦 KHO DỮ LIỆU ĐỘC BẢN: ĐÃ GỘP CHUNG TOÀN BỘ RÁC NGUY HẠI ---
+// --- 📦 KHO DỮ LIỆU ĐỘC BẢN: ĐÃ PHÂN TÁCH LẠI RÁC ĐẶC BIỆT NGUY HIỂM ---
 const masterTrashPool = [
     // 🍏 RÁC HỮU CƠ (ORGANIC)
     { text: "🍏", name: "Táo xanh úng thối", type: "organic" },
@@ -205,7 +205,7 @@ const masterTrashPool = [
     { text: "🍞", name: "Bánh mì quá hạn mốc", type: "organic" },
     { text: "🍖", name: "Xương sườn lợn thừa", type: "organic" },
     { text: "🍗", name: "Xương đùi gà ăn dở", type: "organic" },
-    { text: "EG", name: "Vỏ trứng vịt vỡ", type: "organic" }, // Đổi text tránh trùng emoji cũ nếu cần
+    { text: "🥚", name: "Vỏ trứng vịt vỡ", type: "organic" },
     { text: "🍲", name: "Cặn bã rau canh", type: "organic" },
     { text: "🌾", name: "Rơm rạ mục mọc nấm", type: "organic" },
     { text: "🍂", name: "Lá cây khô rụng", type: "organic" },
@@ -246,18 +246,13 @@ const masterTrashPool = [
     { text: "🧼", name: "Vỏ bao bì bánh kẹo bẩn", type: "residual" },
     { text: "🥾", name: "Đế giày cao su mòn vẹt", type: "residual" },
 
-    // 🔋 RÁC NGUY HẠI CHUNG (HAZARDOUS / MEDICAL) - Đã gom toàn bộ vào đây
+    // 🔋 RÁC NGUY HẠI THÔNG THƯỜNG (HAZARDOUS) - Phạt 15% HP
     { text: "🔋", name: "Cục pin tiểu chảy nước", type: "medical" },
     { text: "😷", name: "Khẩu trang y tế đã dùng", type: "medical" },
     { text: "🩹", name: "Băng gạc cá nhân cũ bẩn", type: "medical" },
     { text: "💊", name: "Thuốc viên Tây y quá hạn", type: "medical" },
     { text: "💡", name: "Bóng đèn huỳnh quang hỏng", type: "medical" },
-    { text: "💉", name: "Kim tiêm dính máu y tế", type: "medical" },
-    { text: "🌡️", name: "Nhiệt kế thủy ngân vỡ", type: "medical" },
-    { text: "🧪", name: "Lọ hóa chất thí nghiệm độc", type: "medical" },
     { text: "🪫", name: "Bình ắc quy chì axit hỏng", type: "medical" },
-    { text: "☠️", name: "Vỏ chai thuốc trừ sâu độc", type: "medical" },
-    { text: "☢️", name: "Chất thải phóng xạ nguy hại", type: "medical" },
     { text: "💨", name: "Bình xịt côn trùng dở dang", type: "medical" },
     { text: "🛢️", name: "Dầu thải động cơ xe máy", type: "medical" },
     { text: "💅", name: "Lọ sơn móng tay cũ độc hại", type: "medical" },
@@ -269,15 +264,22 @@ const masterTrashPool = [
     { text: "🎨", name: "Dung môi pha sơn công nghiệp", type: "medical" },
     { text: "🪵", name: "Hóa chất bảo quản gỗ độc hại", type: "medical" },
     { text: "🔥", name: "Chất lỏng tẩy rỉ sét axit", type: "medical" },
-    { text: "🔬", name: "Ống nghiệm chứa mẫu bệnh phẩm", type: "medical" },
-    { text: "🩸", name: "Chai cồn sát trùng công nghiệp", type: "medical" }
+
+    // 🚨 RÁC ĐẶC BIỆT NGUY HIỂM (7 Loại Tinh Lọc) - Gom chung vào thùng ĐỘC HẠI nhưng Phạt 30% HP
+    { text: "💉", name: "Kim tiêm dính máu y tế", type: "special_danger" },
+    { text: "🌡️", name: "Nhiệt kế thủy ngân vỡ", type: "special_danger" },
+    { text: "🧪", name: "Lọ hóa chất thí nghiệm độc", type: "special_danger" },
+    { text: "☠️", name: "Vỏ chai thuốc trừ sâu độc", type: "special_danger" },
+    { text: "☢️", name: "Chất thải phóng xạ nguy hại", type: "special_danger" },
+    { text: "🔬", name: "Ống nghiệm chứa mẫu bệnh phẩm", type: "special_danger" },
+    { text: "🩸", name: "Chai cồn sát trùng công nghiệp", type: "special_danger" }
 ];
 
 let activeDrawQueue = [];
 function replenishQueue() {
     let filtered = [...masterTrashPool];
     if (currentLevel < 4) {
-        filtered = filtered.filter(item => item.type !== 'medical');
+        filtered = filtered.filter(item => item.type !== 'medical' && item.type !== 'special_danger');
     }
     for (let i = filtered.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -534,13 +536,13 @@ function gameLoop() {
         ctx.lineWidth = 2; ctx.strokeStyle = "#27ae60"; ctx.strokeRect(25, 100, 430, 410);
 
         ctx.fillStyle = "#2c3e50"; ctx.font = "12px Arial"; ctx.textAlign = "left";
-        let lines = [
-            "🏆 ĐẠT MỐC CHUẨN: 100% độc bản, bốn nhóm rác phân loại.",
-            "📊 CÂN BẰNG HP: Vứt sai rác nguy hiểm trừ 30% HP.",
-            "⚡ TRỰC QUAN: Mức trừ phạt đồng đều 15% HP cho rác.",
-            "🎁 DANH HIỆU: Hệ thống phần thưởng thiết kế ĐẸP MẮT & CÔNG NGHỆ.",
-            "📝 TRẮC NGHIỆM ĐỒ SỘ: Khóa câu hỏi ngẫu nhiên sau mỗi lần thăng cấp.",
-            "💡 HÌNH ẢNH SINH ĐỘNG: Hiệu ứng lá rơi, bụi lơ lửng, mưa gió xuyên suốt."
+       let lines = [
+            "🎮 CÁCH CHƠI: Kéo và thả rác vào đúng thùng: HỮU CƠ, TÁI CHẾ, VÔ CƠ.",
+            "☣️ LÊN CẤP 4: Xuất hiện thêm thùng ĐỘC HẠI để xử lý các loại rác nguy hại.",
+            "🚨 SIÊU NGUY HIỂM: Hãy cẩn thận với 7 loại rác tử thần (Kim tiêm, thuốc sâu...)!",
+            "⚡ PHẠT CỰC NẶNG: Trừ ngay 30% HP nếu phân loại sai hoặc để lọt rác Siêu Nguy Hiểm!",
+            "📝 THỬ THÁCH TRI THỨC: Trả lời câu hỏi trắc nghiệm sau mỗi cấp để nhận thêm điểm.",
+            "🎁 PHẦN THƯỞNG: Vượt qua các mốc điểm để thu thập Danh hiệu sinh thái siêu đỉnh!"
         ];
         lines.forEach((line, idx) => ctx.fillText(line, 35, 135 + idx * 34));
 
@@ -675,15 +677,19 @@ function gameLoop() {
             if (item.x < 35) item.x = 35; if (item.x > V_WIDTH - 35) item.x = V_WIDTH - 35;
 
             if (item.y > 580) {
-                decreaseHealth(15); 
-                showFeedback(item.type === 'medical' ? "⚠️ Lọt chất độc hại nguy hiểm! -15% HP!" : "Lọt rác mất rồi! 😟", "#e67e22"); 
+                // Xác định mức trừ phạt dựa trên loại rác lọt lưới
+                let damage = (item.type === 'special_danger') ? 30 : 15;
+                decreaseHealth(damage); 
+                showFeedback(item.type === 'special_danger' ? "🚨 LỌT CHẤT ĐẶC BIỆT NGUY HIỂM! -30% HP!!" : "Lọt rác nguy hại! -15% HP!", "#e74c3c"); 
                 playSound('wrong');
                 comboCount = 0; fallingItems.splice(i, 1); continue;
             }
         }
 
         if (item.timeLeft <= 0) {
-            decreaseHealth(15); showFeedback("Hết giờ xử lý rác! ⏰", "#e74c3c");
+            let damage = (item.type === 'special_danger') ? 30 : 15;
+            decreaseHealth(damage); 
+            showFeedback(item.type === 'special_danger' ? "🚨 Nổ tung chất độc do hết giờ! -30% HP!" : "Hết giờ xử lý rác! -15% HP!", "#e74c3c");
             comboCount = 0; playSound('wrong');
             if (draggingItem && draggingItem.id === item.id) draggingItem = null;
             fallingItems.splice(i, 1); continue;
@@ -694,7 +700,9 @@ function gameLoop() {
         
         ctx.font = "bold 13px Arial"; 
         ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.strokeText(item.name, item.x + stormX, item.y + 42);
-        ctx.fillStyle = (item.type === 'medical') ? "#d35400" : "#2c3e50"; 
+        
+        // Đổi màu chữ hiển thị của rác đặc biệt nguy hiểm thành màu ĐỎ ĐẬM để cảnh báo học sinh
+        ctx.fillStyle = (item.type === 'special_danger') ? "#ff0000" : ((item.type === 'medical') ? "#d35400" : "#2c3e50"); 
         ctx.fillText(item.name, item.x + stormX, item.y + 42);
 
         let timeBarWidth = 52; let progress = item.timeLeft / item.maxTime;
@@ -829,7 +837,8 @@ function handleEnd(e) {
     });
 
     if (matchedBin) {
-        let isCorrect = (item.type === matchedBin.id);
+        // Cả rác y tế thường (medical) và đặc biệt nguy hiểm (special_danger) đều phải bỏ vào thùng ĐỘC HẠI (medical)
+        let isCorrect = (item.type === matchedBin.id) || (item.type === 'special_danger' && matchedBin.id === 'medical');
 
         if (isCorrect) {
             comboCount++; comboTimer = 150; let addedScore = 10;
@@ -841,8 +850,9 @@ function handleEnd(e) {
             
             if (score >= 1200 && score < 1500) { bins.sort(() => Math.random() - 0.5); rearrangeBins(); }
         } else {
-            decreaseHealth(15); comboCount = 0; playSound('wrong'); 
-            showFeedback(item.type === 'medical' ? "⚠️ Phân loại sai chất nguy hại! -15% HP!" : "Nhầm thùng rồi em ơi! 😟", "#e74c3c");
+            let damage = (item.type === 'special_danger') ? 30 : 15;
+            decreaseHealth(damage); comboCount = 0; playSound('wrong'); 
+            showFeedback(item.type === 'special_danger' ? "🚨 SAI LẦM CHẾT NGƯỜI! Phân loại sai chất cực độc! -30% HP!" : "Nhầm thùng rồi em ơi! -15% HP!", "#e74c3c");
             fallingItems = fallingItems.filter(i => i.id !== item.id);
         }
     }
