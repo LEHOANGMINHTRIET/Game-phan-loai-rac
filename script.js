@@ -39,9 +39,10 @@ let clouds = [
     { x: 220, y: 120, speed: 0.08, size: 35 }
 ];
 
+// Nút tạm dừng vật lý góc phải
 const pauseBtn = { x: V_WIDTH - 50, y: 15, w: 35, h: 35 };
 
-// --- 🎵 HỆ THỐNG ÂM THANH CHUẨN (HỖ TRỢ NGẮT PHÁT TUYỆT ĐỐI) ---
+// --- 🎵 HỆ THỐNG ÂM THANH CHUẨN ---
 let audioCtx = null;
 let bgmOsc = null;
 let bgmGain = null;
@@ -58,9 +59,7 @@ function initAudio() {
 }
 
 function startBGM() {
-    // Nếu nhạc đang chạy thì không tạo thêm tránh bị trùng tiếng
     if (bgmOsc) return; 
-
     try {
         bgmOsc = audioCtx.createOscillator();
         bgmGain = audioCtx.createGain();
@@ -83,11 +82,10 @@ function startBGM() {
         bgmOsc.connect(bgmGain);
         bgmGain.connect(audioCtx.destination);
         bgmOsc.start();
-    } catch(e) { console.log("Lỗi khởi tạo BGM:", e); }
+    } catch(e) { console.log("BGM Error:", e); }
 }
 
 function stopBGM() {
-    // Xóa bộ đếm nốt nhạc và giải phóng Node âm thanh ngay lập tức để tắt tiếng triệt để
     if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
     if (bgmOsc) {
         try { bgmOsc.stop(); bgmOsc.disconnect(); } catch(e){}
@@ -183,7 +181,7 @@ function replenishPool() {
     }
 }
 
-// --- ❓ NGÂN HÀNG 60 CÂU HỎI TRẮC NGHIỆM PHÂN THEO CẤP ĐỘ ---
+// --- ❓ KHO 60 CÂU HỎI TRẮC NGHIỆM ---
 const quizBank = {
     2: [
         { q: "Rác hữu cơ gồm những loại nào sau đây?", a: "A. Thức ăn thừa, lá cây khô, vỏ trái cây", b: "B. Túi nilon, cốc nhựa và vỏ lon sắt", c: "C. Pin hỏng và bóng đèn huỳnh quang", ans: "a" },
@@ -237,7 +235,7 @@ const quizBank = {
         { q: "Vì sao việc phân loại rác vô cơ giúp ích cho công nhân môi trường?", a: "A. Giúp giảm khối lượng rác chôn lấp, dễ xử lý công nghiệp", b: "B. Giúp công nhân tìm được nhiều đồ cổ quý", c: "C. Khiến xe chở rác chạy nhanh hơn", ans: "a" }
     ],
     5: [
-        { q: "Rác thải nguy hại y tế và độc hại gia đình gồm những vật phẩm nào?", a: "A. Pin hỏng, bóng đèn vỡ, kim tiêm, nhiệt kế thủy ngân, thuốc hết hạn", b: "B. Vỏ lon bia và lõi ngô thối", c: "C. Sách giáo khoa cũ rách giấy", ans: "a" },
+        { q: "Rác thải nguy hại y tế và độc hại gia đình gồm những vật phẩm nào?", a: "A. Pin hỏng, bóng đèn vỡ, kim tiêm, nhiệt kế thủy ngân, thuốc hết hạn", b: "B. Vỏ lon bia và lõi ngô thối", c: "C. Sách giáo khoa cũ rách giấy", ans: "a" },
         { q: "Tại sao tuyệt đối không vứt pin cũ chung với rác vô cơ thông thường?", a: "A. Rò rỉ kim loại nặng (chì, thủy ngân) gây ô nhiễm đất, nguồn nước ngầm", b: "B. Vì pin cũ sẽ tự nổ tung biến thành vàng", c: "C. Vì pin quá nặng làm gãy bánh xe rác", ans: "a" },
         { q: "Nhiệt kế thủy ngân bị vỡ ra chất lỏng màu bạc, chất đó có độc không?", a: "A. Cực kỳ độc, bay hơi gây hại cho hệ thần kinh và phổi người hít phải", b: "B. Hoàn toàn vô hại, có thể dùng bôi lên da", c: "C. Rất bổ dưỡng, giúp làm mát cơ thể", ans: "a" },
         { q: "Biện pháp xử lý tối ưu nhất đối với rác thải y tế lây nhiễm độc hại là gì?", a: "A. Đốt trong lò hấp/lò thiêu chuyên dụng ở nhiệt độ cực cao", b: "B. Rửa sạch bằng nước xà phòng rồi bán lại", c: "C. Chôn chung với rác hữu cơ làm phân bón", ans: "a" },
@@ -283,8 +281,8 @@ function spawnItem() {
         id: Math.random(),
         text: raw.text, name: raw.name, type: raw.type,
         x: Math.random() * (V_WIDTH - 140) + 70,
-        // 🌟 ĐÃ GIÃN CÁCH XA SO LE NHAU RẤT RÕ RÀNG (Khoảng cách lên tới 200px)
-        y: -60 - (fallingItems.length * 200), 
+        // 🌟 SỬA: Đảm bảo khoảng cách rơi so le cực xa (220px) không bao giờ dính chùm
+        y: -60 - (fallingItems.length * 220), 
         angle: Math.random() * 5,
         windShift: (Math.random() - 0.5) * 1.2,
         timeLeft: maxDuration, 
@@ -300,21 +298,17 @@ function rearrangeBins() {
 }
 
 function triggerQuiz(level) {
-    stopBGM(); // 🌟 SỬA TRIỆT ĐỂ: Tắt nhạc nền lập tức khi mở Quiz
+    stopBGM(); 
     inQuizMode = true;
-    
-    // Bốc ngẫu nhiên 1 câu hỏi trong kho 15 câu của cấp độ đó
     let questionsList = quizBank[level];
     let randomIndex = Math.floor(Math.random() * questionsList.length);
     currentQuiz = questionsList[randomIndex];
-    
     quizFeedback = "";
     quizFeedbackTimer = 0;
 }
 
 function checkLevelProgress() {
     let newLevel = 1;
-    // 🌟 ĐÃ SỬA: Khung điểm nâng cao kéo dài thời gian chơi, chạm mốc 1000đ sẽ khốc liệt tung nóc
     if (score >= 1000) newLevel = 5;
     else if (score >= 700) newLevel = 4;
     else if (score >= 400) newLevel = 3;
@@ -338,7 +332,7 @@ function decreaseHealth(amount) {
         health = 100; 
         if (lives <= 0) {
             gameOver = true;
-            stopBGM(); // 🌟 SỬA TRIỆT ĐỂ: Tắt nhạc nền lập tức khi thua cuộc Game Over
+            stopBGM(); 
         }
     }
 }
@@ -355,7 +349,7 @@ function createParticles(x, y, color) {
     }
 }
 
-// --- VÒNG LẶP ĐỒ HỌA CHÍNH (GAME LOOP) ---
+// --- VÒNG LẶP ĐỒ HỌA CHÍNH ---
 function gameLoop() {
     ctx.clearRect(0, 0, V_WIDTH, V_HEIGHT);
 
@@ -375,19 +369,19 @@ function gameLoop() {
 
     if (showIntro) {
         ctx.fillStyle = "#27ae60"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
-        ctx.fillText("HÀNH TRÌNH XANH LÂM ĐỒNG - BẢN 8.0", V_WIDTH / 2, 90);
+        ctx.fillText("HÀNH TRÌNH XANH LÂM ĐỒNG - BẢN 8.5", V_WIDTH / 2, 90);
         
         ctx.fillStyle = "rgba(255, 255, 255, 0.95)"; ctx.fillRect(25, 130, 430, 360);
         ctx.lineWidth = 2; ctx.strokeStyle = "#27ae60"; ctx.strokeRect(25, 130, 430, 360);
 
         ctx.fillStyle = "#2c3e50"; ctx.font = "12px Arial"; ctx.textAlign = "left";
         let lines = [
-            "🏆 Thăng cấp bậc: Cấp 1 (150đ) | Cấp 2 (400đ) | Cấp 3 (700đ) | Cấp 4 (1000đ)",
-            "🔥 Thử thách tối thượng: Mốc 1000đ sẽ kích hoạt chế độ siêu khó tung nóc!",
-            "📚 Tri thức xáo trộn: Ngân hàng 60 câu hỏi chọn ngẫu nhiên không lặp nhàm chán.",
-            "🔇 Âm thanh chuẩn: Tắt nhạc nền tuyệt đối khi làm Quiz trắc nghiệm.",
-            "🐌 Tốc độ: Rác rơi siêu chậm rãi, giãn cách khoảng cách cực kỳ an toàn.",
-            "⏸️ Tạm dừng: Click biểu tượng [||] ở góc trên bên phải để dừng trò chơi bất cứ lúc nào."
+            "🏆 Khung cấp độ giãn rộng: Cấp 1-4 trải dài tới cột mốc 1000 điểm cực vui.",
+            "🔥 Thử thách bão táp: Trên 1000đ kích hoạt chế độ đảo thùng rác liên tục.",
+            "📚 Ngân hàng tri thức: 60 câu hỏi chia đều bốc xáo trộn không lo trùng lặp.",
+            "🔇 Cơ chế âm thanh: Tắt nhạc nền tuyệt đối khi làm trắc nghiệm & Game Over.",
+            "🌧️ Chế độ mưa rác: Luôn có từ 2-3 rác rơi so le giãn cách an toàn trên màn hình.",
+            "⏸️ Tạm dừng chuẩn: Bấm vào [||] ở góc để dừng game, bấm [▶] để chơi tiếp dễ dàng."
         ];
         lines.forEach((line, idx) => ctx.fillText(line, 40, 165 + idx * 32));
 
@@ -404,7 +398,6 @@ function gameLoop() {
         ctx.fillText("🌟 THỬ THÁCH KIẾN THỨC MÔI TRƯỜNG 🌟", V_WIDTH / 2, 95);
         
         ctx.fillStyle = "#ffffff"; ctx.font = "bold 13px Arial";
-        // Tự động xuống dòng cho câu hỏi dài
         let words = currentQuiz.q.split(' ');
         let line = '';
         let startY = 140;
@@ -439,10 +432,9 @@ function gameLoop() {
             if (quizFeedbackTimer <= 0) {
                 inQuizMode = false;
                 currentQuiz = null;
-                startBGM(); // Kích hoạt lại nhạc nền sau khi đóng màn hình Quiz
+                startBGM(); 
             }
         }
-
         requestAnimationFrame(gameLoop); return;
     }
 
@@ -450,12 +442,10 @@ function gameLoop() {
     if (gameOver) {
         ctx.fillStyle = "#e74c3c"; ctx.font = "bold 32px Arial"; ctx.textAlign = "center";
         ctx.fillText("TRÒ CHƠI KẾT THÚC", V_WIDTH / 2, 220);
-        
         ctx.fillStyle = "#2c3e50"; ctx.font = "bold 16px Arial";
         ctx.fillText("Điểm phân loại: " + score + " Điểm", V_WIDTH / 2, 270);
         ctx.fillStyle = "#27ae60";
         ctx.fillText("Điểm thưởng Trắc nghiệm: +" + quizScore + " Điểm", V_WIDTH / 2, 300);
-        
         ctx.fillStyle = "#d35400"; ctx.font = "bold 22px Arial";
         ctx.fillText("TỔNG ĐIỂM CHUNG CUỘC: " + (score + quizScore) + " ĐIỂM", V_WIDTH / 2, 340);
 
@@ -464,7 +454,7 @@ function gameLoop() {
         requestAnimationFrame(gameLoop); return;
     }
 
-    // GIAO DIỆN TẠM DỪNG (PAUSE GAME)
+    // GIAO DIỆN TẠM DỪNG (PAUSE)
     if (isPaused) {
         ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
         ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center";
@@ -478,22 +468,28 @@ function gameLoop() {
         requestAnimationFrame(gameLoop); return;
     }
 
-    // CHỈ SỐ HUD CHÍNH
-    ctx.fillStyle = "#2c3e50"; ctx.font = "bold 14px Arial"; ctx.textAlign = "left";
-    ctx.fillText("🏆 ĐIỂM: " + score, 20, 35);
-    ctx.fillText("⚡ CẤP ĐỘ: " + currentLevel, 20, 58);
-    ctx.textAlign = "right"; ctx.fillText("MẠNG: " + "❤️".repeat(lives), V_WIDTH - 70, 35);
+    // 🌟 SỬA TOÀN DIỆN: THIẾT KẾ HUD CHỐNG CHỒNG CHẤT CHỮ/MÁU LÊN NHAU
+    ctx.fillStyle = "#2c3e50"; ctx.font = "bold 13px Arial"; 
+    // 1. Mạng chơi nằm gọn bên trái
+    ctx.textAlign = "left"; 
+    ctx.fillText("MẠNG: " + "❤️".repeat(lives), 15, 33);
     
-    ctx.textAlign = "left"; ctx.fillText("HP: ", 220, 35);
-    ctx.fillStyle = "#bdc3c7"; ctx.fillRect(255, 24, 130, 14);
+    // 2. Thanh HP dời vào chính giữa không bị vướng
+    ctx.fillText("HP: ", 145, 33);
+    ctx.fillStyle = "#bdc3c7"; ctx.fillRect(175, 22, 100, 14);
     ctx.fillStyle = health > 30 ? "#2ecc71" : "#e74c3c"; 
-    ctx.fillRect(255, 24, (health / 100) * 130, 14);
+    ctx.fillRect(175, 22, (health / 100) * 100, 14);
 
-    // VẼ KHỐI NÚT TẠM DỪNG || CHUẨN ĐỒ HỌA
+    // 3. Chỉ số điểm và Level dồn sang bên phải trước nút Pause
+    ctx.fillStyle = "#2c3e50"; ctx.textAlign = "right";
+    ctx.fillText("🏆 ĐIỂM: " + score + " | LV: " + currentLevel, V_WIDTH - 65, 33);
+
+    // Vẽ nút Pause vật lý
     ctx.fillStyle = "#7f8c8d"; ctx.beginPath(); ctx.roundRect(pauseBtn.x, pauseBtn.y, pauseBtn.w, pauseBtn.h, 6); ctx.fill();
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
     ctx.fillText("||", pauseBtn.x + pauseBtn.w/2, pauseBtn.y + pauseBtn.h/2 + 4);
 
+    // Thùng rác
     let activeCount = (currentLevel >= 4) ? 4 : 3;
     let activeBins = bins.slice(0, activeCount);
 
@@ -506,12 +502,10 @@ function gameLoop() {
         ctx.fillText(bin.name, bin.x + bin.w / 2, bin.y + bin.h / 2 + 6);
     });
 
-    let maxItemsOnScreen = 1;
-    if (currentLevel === 2) maxItemsOnScreen = 2;
-    if (currentLevel === 3) maxItemsOnScreen = 2;
-    if (currentLevel >= 4) maxItemsOnScreen = 3; 
+    // 🌟 SỬA: Bất kể level nào, duy trì từ 2 đến 3 rác cùng lúc trên màn hình
+    let maxItemsOnScreen = 3; 
 
-    if (fallingItems.length < maxItemsOnScreen && Math.random() < 0.03) {
+    if (fallingItems.length < maxItemsOnScreen && Math.random() < 0.04) {
         spawnItem();
     }
 
@@ -521,9 +515,8 @@ function gameLoop() {
         if (draggingItem && draggingItem.id === item.id) {
             item.timeLeft -= 1/60;
         } else {
-            // 🌟 ĐÃ SỬA: Giảm tốc độ rơi xuống tối đa giúp trò chơi vô cùng thong thả, vừa tay các em học sinh
             let fallSpeed = 0.4 + (currentLevel * 0.25);
-            if (currentLevel === 5) fallSpeed = 2.8; // Cấp 5 khốc liệt lượn sóng
+            if (currentLevel === 5) fallSpeed = 2.8; 
             item.y += fallSpeed;
             item.timeLeft -= 1/60; 
 
@@ -598,6 +591,7 @@ function getMousePos(e) {
     };
 }
 
+// 🌟 SỬA ĐỔI: Sử dụng mousedown/touchstart ĐỂ BẮT NHANH TẠM DỪNG KHÔNG BỊ TRỄ LĂNG
 function handleStart(e) {
     if (!lightningEffect) lightningEffect = document.getElementById('lightningEffect');
     initAudio(); 
@@ -605,13 +599,14 @@ function handleStart(e) {
 
     if (inQuizMode && quizFeedbackTimer > 0) return;
 
-    // KÍCH HOẠT NÚT TẠM DỪNG (PAUSE / RESUME)
+    // KIỂM TRA CLICK NÚT TẠM DỪNG (PAUSE) CHÍNH XÁC CAO
     if (gameStarted && !gameOver && !inQuizMode && !showIntro) {
         if (pos.x >= pauseBtn.x && pos.x <= pauseBtn.x + pauseBtn.w &&
             pos.y >= pauseBtn.y && pos.y <= pauseBtn.y + pauseBtn.h) {
             isPaused = !isPaused;
-            if (isPaused) stopBGM(); else startBGM(); // Dừng/Phát nhạc tương ứng trạng thái Pause
-            return;
+            if (isPaused) stopBGM(); else startBGM(); 
+            if (e.cancelable) e.preventDefault();
+            return; // Thoát hàm lập tức, không chạy logic gắp rác bậy bạ
         }
     }
 
@@ -647,13 +642,14 @@ function handleStart(e) {
     }
 
     if (gameOver) {
-        if (pos.x >= 160 && pos.x <= 320 && pos.y >= 370 && pos.y <= 416) {
+        if (pos.x >= 160 && pos.x <= 320 && pos.y >= 400 && pos.y <= 446) {
             gameOver = false; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = []; trashPool = [];
             rearrangeBins(); spawnItem();
         }
         return;
     }
 
+    // Logic gắp thả rác thông thường
     for (let i = fallingItems.length - 1; i >= 0; i--) {
         let item = fallingItems[i];
         const dist = Math.hypot(pos.x - item.x, pos.y - item.y);
@@ -673,8 +669,13 @@ function handleMove(e) {
     if (e.cancelable) e.preventDefault();
 }
 
-function handleEnd() {
-    if (isPaused || !draggingItem) return;
+function handleEnd(e) {
+    // 🌟 SỬA: Ngăn chặn triệt để hành vi chuột nhầm lẫn kích hoạt lại trạng thái khi thả nút Pause
+    if (isPaused || !draggingItem) {
+        draggingItem = null;
+        return;
+    }
+    
     let item = draggingItem; draggingItem = null;
 
     let activeCount = (currentLevel >= 4) ? 4 : 3;
