@@ -35,8 +35,6 @@ let currentQuiz = null;
 let quizFeedback = "";       
 let quizFeedbackTimer = 0;  
 
-let level4SpecialDangerCount = 0;
-
 let playerBadges = [];
 const rewardsData = {
     1: { name: "🌱 Mầm Xanh Hy Vọng", desc: "Tặng vì khởi đầu xuất sắc ở Cấp 1: Ươm mầm ý thức bảo vệ môi trường!" },
@@ -49,6 +47,60 @@ const rewardsData = {
 let currentRewardShow = null;
 let rewardShowTimer = 0;
 
+// --- 🎇 HỆ THỐNG HIỆU ỨNG MÔI TRƯỜNG CHUYỂN ĐỘNG XUYÊN SUỐT ---
+let ambientParticles = [];
+function initAmbientParticles() {
+    ambientParticles = [];
+    for(let i=0; i<30; i++) {
+        ambientParticles.push({
+            x: Math.random() * V_WIDTH,
+            y: Math.random() * V_HEIGHT,
+            speedY: Math.random() * 1 + 0.5,
+            speedX: (Math.random() - 0.5) * 1,
+            size: Math.random() * 3 + 2,
+            angle: Math.random() * Math.PI * 2,
+            rotSpeed: (Math.random() - 0.5) * 0.02
+        });
+    }
+}
+initAmbientParticles();
+
+function updateAndDrawAmbient(ctx) {
+    ctx.save();
+    for (let i = 0; i < ambientParticles.length; i++) {
+        let p = ambientParticles[i];
+        
+        if (currentLevel <= 3) {
+            p.y += p.speedY * 0.7;
+            p.x += Math.sin(p.angle) * 0.5 + 0.3;
+            p.angle += p.rotSpeed;
+            
+            ctx.fillStyle = "rgba(46, 204, 113, 0.4)";
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, p.size * 1.5, p.size * 0.7, p.angle, 0, Math.PI * 2);
+            ctx.fill();
+        } 
+        else if (currentLevel <= 5) {
+            p.y += (Math.random() - 0.5) * 0.6;
+            p.x += (Math.random() - 0.5) * 0.6;
+            
+            ctx.fillStyle = "rgba(241, 196, 15, 0.3)";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+        } 
+        else {
+            p.y += 8; p.x -= 3;
+            ctx.strokeStyle = "rgba(174, 214, 241, 0.4)"; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 6, p.y + 15); ctx.stroke();
+        }
+
+        if (p.y > V_HEIGHT) { p.y = -20; p.x = Math.random() * V_WIDTH; }
+        if (p.x > V_WIDTH) p.x = 0; if (p.x < 0) p.x = V_WIDTH;
+    }
+    ctx.restore();
+}
+
 let clouds = [
     { x: 40, y: 80, speed: 0.15, size: 25 },
     { x: 220, y: 120, speed: 0.08, size: 35 }
@@ -57,10 +109,7 @@ let clouds = [
 const pauseBtn = { x: V_WIDTH - 50, y: 15, w: 35, h: 35 };
 
 // --- 🎵 HỆ THỐNG ÂM THANH GIẢ LẬP ---
-let audioCtx = null;
-let bgmOsc = null;
-let bgmGain = null;
-let bgmInterval = null;
+let audioCtx = null; let bgmOsc = null; let bgmGain = null; let bgmInterval = null;
 
 function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -103,8 +152,7 @@ function stopBGM() {
 function playSound(type) {
     if (!audioCtx || isPaused) return;
     try {
-        let osc = audioCtx.createOscillator();
-        let gain = audioCtx.createGain();
+        let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
         osc.connect(gain); gain.connect(audioCtx.destination);
         if (type === 'correct') {
             osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
@@ -137,120 +185,97 @@ function playSound(type) {
     } catch (e) {}
 }
 
-// --- 📦 KHO DỮ LIỆU GỐC ĐỂ SINH TỰ ĐỘNG 400 LOẠI RÁC ---
-const rawTrashDatabase = [
-    // 🍏 RÁC HỮU CƠ
-    { text: "🍏", name: "Táo xanh", type: "organic" }, { text: "🍎", name: "Táo đỏ", type: "organic" },
-    { text: "🍐", name: "Quả lê", type: "organic" }, { text: "🍊", name: "Vỏ cam quýt", type: "organic" },
-    { text: "🍋", name: "Vỏ chanh", type: "organic" }, { text: "🍌", name: "Vỏ chuối", type: "organic" },
-    { text: "🍉", name: "Vỏ dưa hấu", type: "organic" }, { text: "🍇", name: "Chùm nho", type: "organic" },
-    { text: "🍓", name: "Quả dâu tây", type: "organic" }, { text: "🍅", name: "Cà chua", type: "organic" },
-    { text: "🥔", name: "Khoai tây", type: "organic" }, { text: "🥕", name: "Củ cà rốt", type: "organic" },
-    { text: "🌽", name: "Lõi ngô", type: "organic" }, { text: "🥬", name: "Lá cải bắp", type: "organic" },
-    { text: "🍞", name: "Bánh mì", type: "organic" }, { text: "🍖", name: "Xương sườn lợn", type: "organic" },
-    { text: "🍗", name: "Xương đùi gà", type: "organic" }, { text: "🥚", name: "Vỏ trứng vịt", type: "organic" },
-    { text: "🍲", name: "Cặn bã rau canh", type: "organic" }, { text: "🌾", name: "Rơm rạ", type: "organic" },
-    { text: "🍂", name: "Lá cây khô", type: "organic" }, { text: "🥀", name: "Hoa hồng héo", type: "organic" },
-    { text: "🍵", name: "Bã trà lọc", type: "organic" }, { text: "☕", name: "Bã cà phê", type: "organic" },
+// --- 📦 KHO DỮ LIỆU ĐỘC BẢN: ĐÃ GỘP CHUNG TOÀN BỘ RÁC NGUY HẠI ---
+const masterTrashPool = [
+    // 🍏 RÁC HỮU CƠ (ORGANIC)
+    { text: "🍏", name: "Táo xanh úng thối", type: "organic" },
+    { text: "🍎", name: "Táo đỏ dập nát", type: "organic" },
+    { text: "🍐", name: "Quả lê héo mốc", type: "organic" },
+    { text: "🍊", name: "Vỏ cam quýt bỏ thừa", type: "organic" },
+    { text: "🍋", name: "Vỏ chanh mục nát", type: "organic" },
+    { text: "🍌", name: "Vỏ chuối lên men", type: "organic" },
+    { text: "🍉", name: "Vỏ dưa hấu chảy nước", type: "organic" },
+    { text: "🍇", name: "Chùm nho thối hỏng", type: "organic" },
+    { text: "🍓", name: "Dâu tây mốc trắng", type: "organic" },
+    { text: "🍅", name: "Cà chua dập thối", type: "organic" },
+    { text: "🥔", name: "Khoai tây mọc mầm", type: "organic" },
+    { text: "🥕", name: "Củ cà rốt khô héo", type: "organic" },
+    { text: "🌽", name: "Lõi ngô thừa", type: "organic" },
+    { text: "🥬", name: "Lá cải bắp úa vàng", type: "organic" },
+    { text: "🍞", name: "Bánh mì quá hạn mốc", type: "organic" },
+    { text: "🍖", name: "Xương sườn lợn thừa", type: "organic" },
+    { text: "🍗", name: "Xương đùi gà ăn dở", type: "organic" },
+    { text: "EG", name: "Vỏ trứng vịt vỡ", type: "organic" }, // Đổi text tránh trùng emoji cũ nếu cần
+    { text: "🍲", name: "Cặn bã rau canh", type: "organic" },
+    { text: "🌾", name: "Rơm rạ mục mọc nấm", type: "organic" },
+    { text: "🍂", name: "Lá cây khô rụng", type: "organic" },
+    { text: "🥀", name: "Hoa hồng héo tàn", type: "organic" },
+    { text: "🍵", name: "Bã trà lọc ẩm ướt", type: "organic" },
+    { text: "☕", name: "Bã cà phê nguyên chất", type: "organic" },
 
-    // 📦 RÁC TÁI CHẾ
-    { text: "📦", name: "Hộp giấy carton", type: "recyclable" }, { text: "📰", name: "Tờ báo cũ", type: "recyclable" },
-    { text: "📑", name: "Giấy in văn phòng", type: "recyclable" }, { text: "📚", name: "Sách giáo khoa", type: "recyclable" },
-    { text: "🍾", name: "Chai thủy tinh", type: "recyclable" }, { text: "🥫", name: "Vỏ lon nước ngọt", type: "recyclable" },
-    { text: "🥤", name: "Chai nhựa PET", type: "recyclable" }, { text: "🥛", name: "Hộp sữa giấy", type: "recyclable" },
-    { text: "🧴", name: "Chai dầu gội nhựa", type: "recyclable" }, { text: "⚙️", name: "Bánh răng sắt", type: "recyclable" },
-    { text: "🛠️", name: "Cờ lê gỉ", type: "recyclable" }, { text: "🔩", name: "Bu lông ốc vít", type: "recyclable" },
-    { text: "🥄", name: "Thìa inox", type: "recyclable" }, { text: "🫙", name: "Hũ thủy tinh", type: "recyclable" },
-    { text: "🍳", name: "Chảo nhôm hỏng", type: "recyclable" },
+    // 📦 RÁC TÁI CHẾ (RECYCLABLE)
+    { text: "📦", name: "Hộp giấy carton phế liệu", type: "recyclable" },
+    { text: "📰", name: "Tờ báo cũ rách", type: "recyclable" },
+    { text: "📑", name: "Giấy in văn phòng cũ", type: "recyclable" },
+    { text: "📚", name: "Sách giáo khoa cũ bỏ", type: "recyclable" },
+    { text: "🍾", name: "Chai thủy tinh rỗng sạch", type: "recyclable" },
+    { text: "🥫", name: "Vỏ lon nước ngọt móp", type: "recyclable" },
+    { text: "🥤", name: "Chai nhựa PET rửa sạch", type: "recyclable" },
+    { text: "🥛", name: "Hộp sữa giấy hết sạch", type: "recyclable" },
+    { text: "🧴", name: "Chai dầu gội nhựa rỗng", type: "recyclable" },
+    { text: "⚙️", name: "Bánh răng sắt phế liệu", type: "recyclable" },
+    { text: "🛠️", name: "Cờ lê gỉ không dùng", type: "recyclable" },
+    { text: "🔩", name: "Bu lông ốc vít sắt cũ", type: "recyclable" },
+    { text: "🥄", name: "Thìa inox cũ hỏng", type: "recyclable" },
+    { text: "🫙", name: "Hũ thủy tinh rỗng", type: "recyclable" },
+    { text: "🍳", name: "Chảo nhôm hỏng quai", type: "recyclable" },
 
-    // 🛍️ RÁC VÔ CƠ / RÁC CÒN LẠI
-    { text: "🛍️", name: "Túi nilon", type: "residual" }, { text: "🚬", name: "Tàn thuốc lá", type: "residual" },
-    { text: "🧱", name: "Mảnh gạch ngói", type: "residual" }, { text: "🥣", name: "Bát đĩa gốm sứ", type: "residual" },
-    { text: "🧦", name: "Tất chân cũ", type: "residual" }, { text: "👕", name: "Vải vụn quần áo", type: "residual" },
-    { text: "🌂", name: "Ô che mưa gãy", type: "residual" }, { text: "🪮", name: "Lược nhựa cũ", type: "residual" },
-    { text: "✏️", name: "Mẩu bút chì", type: "residual" }, { text: "🎈", name: "Xác bóng bay cao su", type: "residual" },
-    { text: "🧻", name: "Giấy ăn bẩn", type: "residual" }, { text: "🩲", name: "Bỉm tã lót trẻ em", type: "residual" },
-    { text: "🧼", name: "Vỏ bao bì bánh kẹo", type: "residual" }, { text: "🥾", name: "Đế giày cao su", type: "residual" },
+    // 🛍️ RÁC VÔ CƠ / CÒN LẠI (RESIDUAL)
+    { text: "🛍️", name: "Túi nilon rách bẩn", type: "residual" },
+    { text: "🚬", name: "Tàn thuốc lá đã tắt", type: "residual" },
+    { text: "🧱", name: "Mảnh gạch ngói vỡ vụn", type: "residual" },
+    { text: "🥣", name: "Bát đĩa gốm sứ mẻ góc", type: "residual" },
+    { text: "🧦", name: "Tất chân cũ rách nát", type: "residual" },
+    { text: "👕", name: "Vải vụn quần áo bẩn", type: "residual" },
+    { text: "🌂", name: "Ô che mưa gãy nan", type: "residual" },
+    { text: "🏺", name: "Mảnh gốm sành vỡ nát", type: "residual" },
+    { text: "✏️", name: "Mẩu bút chì cụt", type: "residual" },
+    { text: "🎈", name: "Xác bóng bay cao su nổ", type: "residual" },
+    { text: "🧻", name: "Giấy ăn bẩn dính dầu", type: "residual" },
+    { text: "🎞️", name: "Băng keo cuộn dính tạp chất", type: "residual" },
+    { text: "🧼", name: "Vỏ bao bì bánh kẹo bẩn", type: "residual" },
+    { text: "🥾", name: "Đế giày cao su mòn vẹt", type: "residual" },
 
-    // 🔋 RÁC NGUY HẠI THÔNG THƯỜNG
-    { text: "🔋", name: "Cục pin tiểu", type: "medical" }, { text: "😷", name: "Khẩu trang y tế", type: "medical" },
-    { text: "🩹", name: "Băng gạc cá nhân", type: "medical" }, { text: "💊", name: "Thuốc viên Tây y", type: "medical" },
-    { text: "💡", name: "Bóng đèn huỳnh quang", type: "medical" },
-
-    // 💀 RÁC ĐẶC BIỆT NGUY HIỂM (HỆ THỐNG EMOJI RIÊNG BIỆT KHÔNG TRÙNG)
-    { text: "💉", name: "Kim tiêm dính máu y tế", type: "special_danger" },
-    { text: "🌡️", name: "Nhiệt kế thủy ngân vỡ", type: "special_danger" },
-    { text: "🧪", name: "Lọ hóa chất thí nghiệm độc", type: "special_danger" },
-    { text: "🪫", name: "Bình ắc quy chì axit hỏng", type: "special_danger" },
-    { text: "☠️", name: "Vỏ chai thuốc trừ sâu độc", type: "special_danger" },
-    { text: "☢️", name: "Chất thải phóng xạ hạt nhân", type: "special_danger" },
-    { text: "💨", name: "Bình xịt côn trùng dở dang", type: "special_danger" },
-    { text: "🛢️", name: "Dầu thải động cơ công nghiệp", type: "special_danger" },
-    { text: "💅", name: "Lọ sơn móng tay cũ độc hại", type: "special_danger" },
-    { text: "💥", name: "Hộp keo dán sắt công nghiệp", type: "special_danger" },
-    { text: "🪣", name: "Chất tẩy rửa bồn cầu cực mạnh", type: "special_danger" },
-    { text: "📱", name: "Pin Lithium máy tính phồng", type: "special_danger" },
-    { text: "💾", name: "Linh kiện bo mạch điện tử chì", type: "special_danger" },
-    { text: "🌿", name: "Thuốc diệt cỏ chứa dioxin", type: "special_danger" },
-    { text: "🎨", name: "Dung môi pha sơn công nghiệp", type: "special_danger" },
-    { text: "🪵", name: "Hóa chất bảo quản gỗ cực độc", type: "special_danger" },
-    { text: "🔥", name: "Chất lỏng tẩy rỉ sét axit", type: "special_danger" },
-    { text: "🔬", name: "Ống nghiệm chứa mẫu bệnh phẩm", type: "special_danger" },
-    { text: "🩸", name: "Chai cồn sát trùng công nghiệp", type: "special_danger" },
-    { text: "💣", name: "Mìn phế liệu gỉ sét độc hại", type: "special_danger" }
+    // 🔋 RÁC NGUY HẠI CHUNG (HAZARDOUS / MEDICAL) - Đã gom toàn bộ vào đây
+    { text: "🔋", name: "Cục pin tiểu chảy nước", type: "medical" },
+    { text: "😷", name: "Khẩu trang y tế đã dùng", type: "medical" },
+    { text: "🩹", name: "Băng gạc cá nhân cũ bẩn", type: "medical" },
+    { text: "💊", name: "Thuốc viên Tây y quá hạn", type: "medical" },
+    { text: "💡", name: "Bóng đèn huỳnh quang hỏng", type: "medical" },
+    { text: "💉", name: "Kim tiêm dính máu y tế", type: "medical" },
+    { text: "🌡️", name: "Nhiệt kế thủy ngân vỡ", type: "medical" },
+    { text: "🧪", name: "Lọ hóa chất thí nghiệm độc", type: "medical" },
+    { text: "🪫", name: "Bình ắc quy chì axit hỏng", type: "medical" },
+    { text: "☠️", name: "Vỏ chai thuốc trừ sâu độc", type: "medical" },
+    { text: "☢️", name: "Chất thải phóng xạ nguy hại", type: "medical" },
+    { text: "💨", name: "Bình xịt côn trùng dở dang", type: "medical" },
+    { text: "🛢️", name: "Dầu thải động cơ xe máy", type: "medical" },
+    { text: "💅", name: "Lọ sơn móng tay cũ độc hại", type: "medical" },
+    { text: "💥", name: "Hộp keo dán sắt công nghiệp", type: "medical" },
+    { text: "🪣", name: "Chất tẩy rửa bồn cầu cực mạnh", type: "medical" },
+    { text: "📱", name: "Pin Lithium máy tính phồng", type: "medical" },
+    { text: "💾", name: "Linh kiện bo mạch điện tử chì", type: "medical" },
+    { text: "🌿", name: "Thuốc diệt cỏ chứa hóa chất", type: "medical" },
+    { text: "🎨", name: "Dung môi pha sơn công nghiệp", type: "medical" },
+    { text: "🪵", name: "Hóa chất bảo quản gỗ độc hại", type: "medical" },
+    { text: "🔥", name: "Chất lỏng tẩy rỉ sét axit", type: "medical" },
+    { text: "🔬", name: "Ống nghiệm chứa mẫu bệnh phẩm", type: "medical" },
+    { text: "🩸", name: "Chai cồn sát trùng công nghiệp", type: "medical" }
 ];
-
-let masterTrashPool = [];
-
-// ✨ THUẬT TOÁN ĐẠT CHUẨN 400 LOẠI RÁC BẢO VỆ MÔI TRƯỜNG KHÔNG TRÙNG LẶP
-function build400TrashDatabase() {
-    masterTrashPool = [];
-    rawTrashDatabase.forEach(item => {
-        masterTrashPool.push({ text: item.text, name: item.name, type: item.type });
-    });
-
-    const organicStates = ["úng thối", "dập nát", "héo mốc", "bỏ thừa", "mục nát", "lên men"];
-    const recyclableStates = ["rửa sạch rỗng", "phế liệu", "móp méo", "cũ nát", "bỏ hoang"];
-    const residualStates = ["rách nát bẩn", "đã qua sử dụng", "vỡ vụn", "nhiễm bẩn", "mẻ góc"];
-    const medicalStates = ["đã qua sử dụng", "quá hạn", "gỉ sét hỏng", "hết hạn dùng"];
-
-    let organicPool = rawTrashDatabase.filter(i => i.type === 'organic');
-    let recyclablePool = rawTrashDatabase.filter(i => i.type === 'recyclable');
-    let residualPool = rawTrashDatabase.filter(i => i.type === 'residual');
-    let medicalPool = rawTrashDatabase.filter(i => i.type === 'medical');
-    let dangerPool = rawTrashDatabase.filter(i => i.type === 'special_danger');
-
-    for(let i=0; i<116; i++) {
-        let base = organicPool[i % organicPool.length];
-        let state = organicStates[Math.floor(Math.random() * organicStates.length)];
-        masterTrashPool.push({ text: base.text, name: `${base.name} ${state}`, type: 'organic' });
-    }
-    for(let i=0; i<85; i++) {
-        let base = recyclablePool[i % recyclablePool.length];
-        let state = recyclableStates[Math.floor(Math.random() * recyclableStates.length)];
-        masterTrashPool.push({ text: base.text, name: `${base.name} ${state}`, type: 'recyclable' });
-    }
-    for(let i=0; i<86; i++) {
-        let base = residualPool[i % residualPool.length];
-        let state = residualStates[Math.floor(Math.random() * residualStates.length)];
-        masterTrashPool.push({ text: base.text, name: `${base.name} ${state}`, type: 'residual' });
-    }
-    for(let i=0; i<25; i++) {
-        let base = medicalPool[i % medicalPool.length];
-        let state = medicalStates[Math.floor(Math.random() * medicalStates.length)];
-        masterTrashPool.push({ text: base.text, name: `${base.name} ${state}`, type: 'medical' });
-    }
-    for(let i=0; i<10; i++) {
-        let base = dangerPool[i % dangerPool.length];
-        masterTrashPool.push({ text: base.text, name: `${base.name} cấp nguy hại`, type: 'special_danger' });
-    }
-    console.log("Hệ thống dữ liệu môi trường kích hoạt: " + masterTrashPool.length + " loại rác.");
-}
-build400TrashDatabase();
 
 let activeDrawQueue = [];
 function replenishQueue() {
-    let filtered = masterTrashPool.filter(item => item.type !== 'special_danger'); 
+    let filtered = [...masterTrashPool];
     if (currentLevel < 4) {
         filtered = filtered.filter(item => item.type !== 'medical');
     }
@@ -261,7 +286,7 @@ function replenishQueue() {
     activeDrawQueue = filtered;
 }
 
-// --- ❓ KHO 60 CÂU HỎI TRẮC NGHIỆM ĐỒ SỘ (10 CÂU MỖI CẤP ĐỘ KHÔNG TRÙNG LẶP) ---
+// --- ❓ KHO CÂU HỎI TRẮC NGHIỆM ĐỒ SỘ ---
 const quizBank = {
     1: [
         { q: "Rác hữu cơ dễ phân hủy gồm những loại nào sau đây?", a: "A. Thức ăn thừa, rau quả hư, lá cây khô, bã trà", b: "B. Lon nước ngọt nhôm và chai nhựa PET rỗng", c: "C. Cục pin tiểu hỏng và khẩu trang y tế đã dùng", ans: "a", realAns: "A" },
@@ -293,22 +318,22 @@ const quizBank = {
         { q: "Hộp xốp đựng cơm làm từ nhựa PS thuộc nhóm rác nào?", a: "A. Rác hữu cơ tự nhiên", b: "B. Rác vô cơ (rác còn lại) do cực kỳ khó tái chế và giá trị thấp", c: "C. Rác nguy hại y tế lây nhiễm", ans: "b", realAns: "B" },
         { q: "Phương pháp xử lý rác vô cơ không thể tái chế phổ biến hiện nay là gì?", a: "A. Đốt phát điện tiêu chuẩn cao hoặc chôn lấp hợp vệ sinh", b: "B. Đổ toàn bộ ra sông suối lớn", c: "C. Nghiền nhỏ trộn vào thức ăn gia súc", ans: "a", realAns: "A" },
         { q: "Đốt rác nilon, nhựa vô cơ ở nhiệt độ thấp tại nhà sinh ra chất độc nào?", a: "A. Khí Oxy tinh khiết", b: "B. Khí Dioxin và Furan cực độc gây ung thư", c: "C. Khí Nitơ làm mát bầu không khí", ans: "b", realAns: "B" },
-        { q: "Tại sao bỉm, tã lót, băng vệ sinh đã qua sử dụng được xếp vào rác vô cơ còn lại?", a: "A. Vì chúng chứa hạt gel thấm hút nhựa và chất thải sinh học khó bóc tách tái chế", b: "B. Vì chúng làm từ sắt thép", c: "C. Vì chúng có thể ủ thành phân bón hữu cơ cây", ans: "a", realAns: "A" },
+        { q: "Tại sao băng keo đóng gói đã bẩn dính tạp chất được xếp vào rác vô cơ còn lại?", a: "A. Vì cấu trúc nhựa dẻo pha tạp chất keo hóa học bám dính không thể nghiền bột hay tái chế thô", b: "B. Vì chúng làm từ lá cây hữu cơ", c: "C. Vì chúng có thể ủ thành mùn dinh dưỡng", ans: "a", realAns: "A" },
         { q: "Giấy ăn đã bẩn dính dầu mỡ thực phẩm thuộc nhóm rác nào?", a: "A. Rác tái chế cao cấp", b: "B. Rác vô cơ (còn lại) vì không thể nghiền bột giấy tái chế được nữa", c: "C. Rác nguy hại chất phóng xạ", ans: "b", realAns: "B" },
         { q: "Mẩu tàn thuốc lá vứt bừa bãi gây hại gì cho sinh vật?", a: "A. Chứa sợi lọc nhựa xenlulozo axetat và nicotin độc hại đầu độc nguồn nước", b: "B. Làm sạch đất trồng xung quanh", c: "C. Cung cấp vitamin cho loài cá", ans: "a", realAns: "A" },
         { q: "Quần áo cũ làm từ sợi nhân tạo polyester khi mục nát thải ra thứ gì nguy hiểm?", a: "A. Các hạt vi nhựa (microplastics) xâm nhập chuỗi thức ăn", b: "B. Khí oxy hóa lỏng", c: "C. Kim loại vàng nguyên chất", ans: "a", realAns: "A" },
         { q: "Hạt vi nhựa có đường kính định nghĩa nhỏ hơn bao nhiêu?", a: "A. Nhỏ hơn 5 milimét ($5\text{ mm}$)", b: "B. Nhỏ hơn 5 mét ($5\text{ m}$)", c: "C. Nhỏ hơn 50 centimét ($50\text{ cm}$)", ans: "a", realAns: "A" }
     ],
     4: [
-        { q: "Loại rác nguy hại nào hay gặp ở gia đình chứa kim loại nặng chì, thủy ngân?", a: "A. Túi nilon đen đựng đồ", b: "B. Các loại pin tiểu, pin điện thoại, bóng đèn huỳnh quang hỏng", c: "C. Vỏ chai nước suối nhựa", ans: "b", realAns: "B" },
-        { q: "Khi thu gom khẩu trang y tế dùng xong tại trường học ta xử lý thế nào?", a: "A. Vứt bừa bãi vào ngăn bàn học", b: "B. Gom vào thùng rác nguy hại thông thường để xử lý triệt để mầm bệnh", c: "C. Giặt phơi khô dùng lại vô hạn", ans: "b", realAns: "B" },
+        { q: "Loại rác nguy hại nào hay gặp ở gia đình chứa kim loại nặng chì, thủy ngân?", a: "A. Túi nilon đen đựng đồ", b: "B. Các loại pin tiểu, bình ắc quy, bóng đèn huỳnh quang hỏng", c: "C. Vỏ chai nước suối nhựa", ans: "b", realAns: "B" },
+        { q: "Khi thu gom các chất độc hại như kim tiêm y tế hoặc vỏ chai thuốc trừ sâu, ta phải bỏ vào thùng màu gì?", a: "A. Thùng màu xanh lá cây hữu cơ", b: "B. Thùng màu cam chuyên dụng chứa chất nguy hại", c: "C. Thùng rác tái chế bằng giấy", ans: "b", realAns: "B" },
         { q: "Tại sao không được vứt pin cũ chung với rác sinh hoạt thông thường?", a: "A. Tránh rò rỉ hóa chất và kim loại nặng đầu độc đất, mạch nước ngầm", b: "B. Vì pin làm nặng thùng rác của xe", c: "C. Vì pin có thể tự sạc lại điện", ans: "a", realAns: "A" },
         { q: "Kim loại nặng Cadmium trong pin cũ tích tụ trong cơ thể gây hỏng cơ quan nào?", a: "A. Làm chắc xương khớp", b: "B. Gây suy thận kinh niên và xương giòn dễ gãy", c: "C. Tăng cường thị lực cho mắt", ans: "b", realAns: "B" },
         { q: "Bóng đèn huỳnh quang cũ bị vỡ phát tán ra khí độc gì?", a: "A. Hơi thủy ngân cực độc hại cho hệ thần kinh và hô hấp", b: "B. Khí Oxy thiên nhiên", c: "C. Khí Gas nấu ăn", ans: "a", realAns: "A" },
-        { q: "Ký hiệu thùng rác y tế nguy hại lây nhiễm thường có màu gì đặc trưng?", a: "A. Thường màu vàng tươi kèm biểu tượng nguy hại sinh học", b: "B. Màu xanh lá cây thân thiện", c: "C. Màu hồng cá tính", ans: "a", realAns: "A" },
+        { q: "Ký hiệu thùng rác y tế/nguy hại lây nhiễm trong trò chơi có màu gì đặc trưng?", a: "A. Thường có màu cam kèm chữ ĐỘC HẠI nổi bật", b: "B. Màu xanh lá cây thân thiện", c: "C. Màu hồng cá tính", ans: "a", realAns: "A" },
         { q: "Thuốc tây y quá hạn sử dụng nếu vứt tự do ra bãi rác gây hậu quả gì?", a: "A. Tạo ra các siêu vi khuẩn kháng thuốc (kháng sinh) nguy hiểm", b: "B. Làm bổ dưỡng cho tôm cá dưới ao", c: "C. Giúp cây cối mọc nhanh hơn", ans: "a", realAns: "A" },
         { q: "Vỏ chai xi măng, bao bì dính hóa chất xây dựng thuộc nhóm rác nào?", a: "A. Rác hữu cơ ủ phân", b: "B. Chất thải nguy hại cần thu gom riêng biệt", c: "C. Rác tái chế làm vở viết", ans: "b", realAns: "B" },
-        { q: "Lọ sơn móng tay, dung môi tẩy sơn cũ thuộc nhóm rác nào vì sao?", a: "A. Rác tái chế vì làm từ thủy tinh", b: "B. Rác nguy hại vì chứa các hợp chất hữu cơ dễ bay hơi độc ($VOC_s$)", c: "C. Rác hữu cơ lành tính", ans: "b", realAns: "B" },
+        { q: "Lọ sơn móng tay, dung môi một khi bỏ đi thuộc nhóm rác nào vì sao?", a: "A. Rác tái chế vì làm từ thủy tinh", b: "B. Rác nguy hại vì chứa các hợp chất hữu cơ dễ bay hơi độc ($VOC_s$)", c: "C. Rác hữu cơ lành tính", ans: "b", realAns: "B" },
         { q: "Biện pháp xử lý pin cũ thu gom đúng quy chuẩn kỹ thuật hiện nay là gì?", a: "A. Đem chôn sâu dưới cát mịn", b: "B. Hóa già, bóc tách thu hồi kim loại quý trong nhà máy chuyên dụng", c: "C. Thả trôi sông đại dương", ans: "b", realAns: "B" }
     ],
     5: [
@@ -321,7 +346,7 @@ const quizBank = {
         { q: "Hành động nào giúp học sinh giảm lượng rác thải nhựa tại trường học?", a: "A. Mỗi ngày mua một chai nước suối nhựa mới", b: "B. Mang theo bình nước cá nhân sử dụng nhiều lần", c: "C. Vứt túi nilon xuống cống trường", ans: "b", realAns: "B" },
         { q: "Chất độc Dioxin (chất độc màu da cam) cực kỳ bền vững, thuộc nhóm chất ô nhiễm nào?", a: "A. Chất ô nhiễm hữu cơ khó phân hủy ($POP_s$)", b: "B. Chất hữu cơ dễ phân hủy sinh học", c: "C. Khí hiếm thân thiện môi trường", ans: "a", realAns: "A" },
         { q: "Khái niệm 'Dấu chân Cacbon' (Carbon Footprint) thể hiện điều gì?", a: "A. Kích thước bàn chân của con người", b: "B. Tổng lượng khí nhà kính phát thải trực tiếp và gián tiếp từ hoạt động của con người", c: "C. Trọng lượng rác thải giấy thu gom", ans: "b", realAns: "B" },
-        { q: "Ngày Môi trường Thế giới được Liên Hợp Quốc quy định là ngày nào?", a: "A. Ngày 1 tháng 1 hàng năm", b: "B. Ngày 5 tháng 6 hàng năm", c: "C. Ngày 25 tháng 12 hàng năm", ans: "b", realAns: "B" }
+        { q: "Ngày Môi trường Thế giới được Liên Hợp Quốc quy định là ngày nào?", a: "A. Ngày 5 tháng 6 hàng năm", b: "B. Ngày 1 tháng 1 hàng năm", c: "C. Ngày 25 tháng 12 hàng năm", ans: "a", realAns: "A" }
     ],
     6: [
         { q: "Khi bão lớn xảy ra, hành động bảo vệ môi trường nào đúng đắn nhất?", a: "A. Thu dọn rác gọn gàng, khơi thông dòng chảy tránh ngập lụt", b: "B. Đổ toàn bộ các loại rác xuống lòng cống thoát nước", c: "C. Kệ mặc cho rác trôi tự do theo dòng nước bão", ans: "a", realAns: "A" },
@@ -357,19 +382,7 @@ function showFeedback(text, color) {
 
 function spawnItem() {
     if (activeDrawQueue.length === 0) replenishQueue();
-    let raw = null;
-
-    if (currentLevel === 4 && level4SpecialDangerCount < 3 && Math.random() < 0.15) {
-        let specialPool = masterTrashPool.filter(item => item.type === 'special_danger');
-        raw = specialPool[Math.floor(Math.random() * specialPool.length)];
-        level4SpecialDangerCount++;
-    } 
-    else if (currentLevel >= 5 && Math.random() < 0.2) {
-        let specialPool = masterTrashPool.filter(item => item.type === 'special_danger');
-        raw = specialPool[Math.floor(Math.random() * specialPool.length)];
-    } else {
-        raw = activeDrawQueue.pop();
-    }
+    let raw = activeDrawQueue.pop();
     
     if (!raw) return;
 
@@ -489,15 +502,15 @@ function gameLoop() {
 
     let skyGrad = ctx.createLinearGradient(0, 0, 0, V_HEIGHT);
     if (currentLevel <= 3) {
-        skyGrad.addColorStop(0, '#eef7f6'); skyGrad.addColorStop(1, '#d5eadd');
+        skyGrad.addColorStop(0, '#eef7f6'); skyGrad.addColorStop(1, '#d5eadd'); 
     } else if (currentLevel <= 5) {
-        skyGrad.addColorStop(0, '#bdc3c7'); skyGrad.addColorStop(1, '#95a5a6');
+        skyGrad.addColorStop(0, '#f5f7fa'); skyGrad.addColorStop(1, '#e4e8f0'); 
     } else {
-        skyGrad.addColorStop(0, '#34495e'); skyGrad.addColorStop(1, '#2c3e50'); 
+        skyGrad.addColorStop(0, '#2c3e50'); skyGrad.addColorStop(1, '#1a252f'); 
     }
     ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
 
-    ctx.fillStyle = currentLevel >= 5 ? "rgba(100, 110, 120, 0.5)" : "rgba(255, 255, 255, 0.6)";
+    ctx.fillStyle = currentLevel === 6 ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.6)";
     clouds.forEach(c => {
         if (!isPaused && !showIntro && !inQuizMode && !gameOver) {
             c.x += (currentLevel >= 5) ? c.speed * 8 : c.speed;
@@ -506,25 +519,28 @@ function gameLoop() {
         ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2); ctx.fill();
     });
 
+    if (!isPaused && !showIntro && !inQuizMode && !gameOver) {
+        updateAndDrawAmbient(ctx);
+    }
+
     ctx.fillStyle = currentLevel === 6 ? "#1e5f38" : "#27ae60"; 
     ctx.fillRect(0, 580, V_WIDTH, 120);
 
     if (showIntro) {
         ctx.fillStyle = "#27ae60"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
-        ctx.fillText("HÀNH TRÌNH XANH LÂM ĐỒNG - BẢN 10.0", V_WIDTH / 2, 60);
+        ctx.fillText("HÀNH TRÌNH XANH LÂM ĐỒNG - BẢN 11.2", V_WIDTH / 2, 60);
         
         ctx.fillStyle = "rgba(255, 255, 255, 0.95)"; ctx.fillRect(25, 100, 430, 410);
         ctx.lineWidth = 2; ctx.strokeStyle = "#27ae60"; ctx.strokeRect(25, 100, 430, 410);
 
         ctx.fillStyle = "#2c3e50"; ctx.font = "12px Arial"; ctx.textAlign = "left";
         let lines = [
-            "🏆 ĐẠT MỐC CHUẨN: Tự động kích hoạt ĐỦ 400 LOẠI RÁC KHÁC NHAU.",
-            "📊 KHẢO SÁT CHẤM ĐIỂM: Kho dữ liệu đạt chất lượng cao.",
-            "⚡ TRỰC QUAN: Mỗi loại rác đặc biệt nguy hiểm đều có EMOJI RIÊNG BIỆT.",
-            "🎁 DANH HIỆU: Vật phẩm phần thưởng thiết kế ĐẸP MẮT & CÔNG NGHỆ.",
-            "🚫 CÂN BẰNG HP: Vứt sai rác nguy hiểm trừ 30% HP.",
-            "📝 TRẮC NGHIỆM: 60 câu hỏi ngẫu nhiên phân bổ qua 6 cấp độ.",
-            "💡 HỌC TẬP THỰC TẾ: Hiển thị ngay đáp án đúng sai."
+            "🏆 ĐẠT MỐC CHUẨN: 100% độc bản, bốn nhóm rác phân loại.",
+            "📊 CÂN BẰNG HP: Vứt sai rác nguy hiểm trừ 30% HP.",
+            "⚡ TRỰC QUAN: Mức trừ phạt đồng đều 15% HP cho rác.",
+            "🎁 DANH HIỆU: Hệ thống phần thưởng thiết kế ĐẸP MẮT & CÔNG NGHỆ.",
+            "📝 TRẮC NGHIỆM ĐỒ SỘ: Khóa câu hỏi ngẫu nhiên sau mỗi lần thăng cấp.",
+            "💡 HÌNH ẢNH SINH ĐỘNG: Hiệu ứng lá rơi, bụi lơ lửng, mưa gió xuyên suốt."
         ];
         lines.forEach((line, idx) => ctx.fillText(line, 35, 135 + idx * 34));
 
@@ -540,7 +556,7 @@ function gameLoop() {
         ctx.fillStyle = "#f1c40f"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center";
         ctx.fillText("🌟 THỬ THÁCH TRI THỨC XANH CẤP " + currentLevel + " 🌟", V_WIDTH / 2, 85);
         
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px Arial"; // Tăng cỡ chữ câu hỏi trực quan
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px Arial";
         let words = currentQuiz.q.split(' ');
         let line = ''; let startY = 135;
         for(let n = 0; n < words.length; n++) {
@@ -619,7 +635,6 @@ function gameLoop() {
         requestAnimationFrame(gameLoop); return;
     }
 
-    // --- 📊 HUD GIAO DIỆN ---
     ctx.fillStyle = currentLevel === 6 ? "#ffffff" : "#2c3e50"; ctx.font = "bold 13px Arial"; ctx.textAlign = "left";
     ctx.fillText("MẠNG: " + "❤️".repeat(lives), 15, 33);
     ctx.fillText("HP: ", 145, 33);
@@ -660,21 +675,15 @@ function gameLoop() {
             if (item.x < 35) item.x = 35; if (item.x > V_WIDTH - 35) item.x = V_WIDTH - 35;
 
             if (item.y > 580) {
-                if (item.type === 'special_danger') {
-                    decreaseHealth(30); playSound('wrong'); showFeedback("💀 NGUY HIỂM: Lọt độc chất! Trừ 30% HP!", "#e74c3c");
-                } else {
-                    decreaseHealth(12); showFeedback("Lọt rác mất rồi! 😟", "#e67e22"); playSound('wrong');
-                }
+                decreaseHealth(15); 
+                showFeedback(item.type === 'medical' ? "⚠️ Lọt chất độc hại nguy hiểm! -15% HP!" : "Lọt rác mất rồi! 😟", "#e67e22"); 
+                playSound('wrong');
                 comboCount = 0; fallingItems.splice(i, 1); continue;
             }
         }
 
         if (item.timeLeft <= 0) {
-            if (item.type === 'special_danger') {
-                decreaseHealth(30); showFeedback("💀 NGUY HIỂM: Hóa chất rò rỉ! Trừ 30% HP!", "#e74c3c");
-            } else {
-                decreaseHealth(12); showFeedback("Hết giờ xử lý rác! ⏰", "#e74c3c");
-            }
+            decreaseHealth(15); showFeedback("Hết giờ xử lý rác! ⏰", "#e74c3c");
             comboCount = 0; playSound('wrong');
             if (draggingItem && draggingItem.id === item.id) draggingItem = null;
             fallingItems.splice(i, 1); continue;
@@ -685,7 +694,7 @@ function gameLoop() {
         
         ctx.font = "bold 13px Arial"; 
         ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.strokeText(item.name, item.x + stormX, item.y + 42);
-        ctx.fillStyle = (item.type === 'special_danger') ? "#d35400" : "#2c3e50"; 
+        ctx.fillStyle = (item.type === 'medical') ? "#d35400" : "#2c3e50"; 
         ctx.fillText(item.name, item.x + stormX, item.y + 42);
 
         let timeBarWidth = 52; let progress = item.timeLeft / item.maxTime;
@@ -760,7 +769,7 @@ function handleStart(e) {
     if (showIntro) {
         if (pos.x >= 140 && pos.x <= 340 && pos.y >= 525 && pos.y <= 571) {
             showIntro = false; gameStarted = true; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1;
-            playerBadges = []; comboCount = 0; level4SpecialDangerCount = 0;
+            playerBadges = []; comboCount = 0;
             currentRewardShow = rewardsData[1]; rewardShowTimer = 130;
             playerBadges.push(rewardsData[1].name.split(" ")[0]);
             replenishQueue(); spawnItem(); triggerQuiz(1);
@@ -790,8 +799,8 @@ function handleStart(e) {
 
     if (gameOver) {
         if (pos.x >= 160 && pos.x <= 320 && pos.y >= 410 && pos.y <= 456) {
-            gameOver = false; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = []; activeDrawQueue = []; playerBadges = []; comboCount = 0; level4SpecialDangerCount = 0;
-            rearrangeBins(); build400TrashDatabase(); replenishQueue(); spawnItem();
+            gameOver = false; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = []; activeDrawQueue = []; playerBadges = []; comboCount = 0;
+            rearrangeBins(); replenishQueue(); spawnItem();
         }
         return;
     }
@@ -820,7 +829,7 @@ function handleEnd(e) {
     });
 
     if (matchedBin) {
-        let isCorrect = (item.type === matchedBin.id) || (item.type === 'special_danger' && matchedBin.id === 'medical');
+        let isCorrect = (item.type === matchedBin.id);
 
         if (isCorrect) {
             comboCount++; comboTimer = 150; let addedScore = 10;
@@ -832,11 +841,8 @@ function handleEnd(e) {
             
             if (score >= 1200 && score < 1500) { bins.sort(() => Math.random() - 0.5); rearrangeBins(); }
         } else {
-            if (item.type === 'special_danger') {
-                decreaseHealth(30); playSound('wrong'); showFeedback("💀 SAI LẦM: Vứt sai hóa chất độc hại! Trừ 30% HP!", "#e74c3c");
-            } else {
-                decreaseHealth(15); comboCount = 0; playSound('wrong'); showFeedback("Nhầm thùng rồi em ơi! 😟", "#e74c3c");
-            }
+            decreaseHealth(15); comboCount = 0; playSound('wrong'); 
+            showFeedback(item.type === 'medical' ? "⚠️ Phân loại sai chất nguy hại! -15% HP!" : "Nhầm thùng rồi em ơi! 😟", "#e74c3c");
             fallingItems = fallingItems.filter(i => i.id !== item.id);
         }
     }
@@ -854,5 +860,6 @@ canvas.addEventListener('touchstart', handleStart, { passive: false });
 canvas.addEventListener('touchmove', handleMove, { passive: false });
 window.addEventListener('touchend', handleEnd);
 
+replenishQueue();
 rearrangeBins();
 requestAnimationFrame(gameLoop);
