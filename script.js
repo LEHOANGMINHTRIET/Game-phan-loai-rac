@@ -2,7 +2,7 @@
 // 🍏 TRÒ CHƠI: HÀNH TRÌNH XANH LÂM ĐỒNG - PHIÊN BẢN CHÍNH THỨC (PRODUCTION READY)
 // 📝 THÔNG TIN SẢN PHẨM & BẢN QUYỀN TÁC GIẢ 
 // ============================================================================
-const AUTHOR_NAME  = "Lê Hoàng MInh Triết - Nguyễn Thành Thiện Nhân "; 
+const AUTHOR_NAME  = "Lê Hoàng Minh Triết - Nguyễn Thành Thiện Nhân "; 
 const AUTHOR_CLASS = "Lớp 6A1 - Trường THCS Chí Công";
 
 const canvas = document.getElementById('gameCanvas');
@@ -27,6 +27,7 @@ setTimeout(resizeCanvas, 150);
 let score = 0, quizScore = 0, lives = 3, health = 100, currentLevel = 1;
 let gameOver = false, gameStarted = false, showIntro = true, levelUpTimer = 0, isPaused = false; 
 let comboCount = 0, comboTimer = 0, inQuizMode = false, currentQuiz = null, quizFeedback = "", quizFeedbackTimer = 0;  
+let floatingTexts = []; // MỚI: Mảng quản lý hiệu ứng chữ điểm bay sinh động
 
 let playerBadges = [];
 const rewardsData = {
@@ -262,6 +263,11 @@ let feedbackText = "", feedbackColor = "", feedbackTimer = 0;
 
 function showFeedback(text, color) { feedbackText = text; feedbackColor = color; feedbackTimer = 50; }
 
+// MỚI: Khởi tạo hàm sinh chữ bay điểm số (+10, -15...) chuẩn gaming
+function spawnFloatingText(text, x, y, color, size = "bold 16px Arial") {
+    floatingTexts.push({ text: text, x: x, y: y, color: color, alpha: 1, vy: -1.2, size: size });
+}
+
 function spawnItem() {
     if (activeDrawQueue.length === 0) replenishQueue();
     let raw = activeDrawQueue.pop(); if (!raw) return;
@@ -326,7 +332,7 @@ function createParticles(x, y, color) {
     }
 }
 
-// --- THUẬT TOÁN TỰ ĐỘNG CHIA DÒNG CHỮ TRÁNH TRÀN KHUNG HƯỚNG DẪN ---
+// --- THUẬT TOÁN TỰ ĐỘNG CHIA DÒNG CHỮ TRẠNH TRÀN KHUNG HƯỚNG DẪN ---
 function drawTextWrap(text, x, y, maxWidth, lineHeight) {
     let words = text.split(' '), line = '';
     for (let n = 0; n < words.length; n++) {
@@ -379,7 +385,7 @@ function gameLoop() {
     if (!isPaused && !showIntro && !inQuizMode && !gameOver) updateAndDrawAmbient(ctx);
     ctx.fillStyle = currentLevel === 6 ? "#1e5f38" : "#27ae60"; ctx.fillRect(0, 580, V_WIDTH, 120);
 
-    // --- MÀN HÌNH INTRO ĐÃ ĐƯỢC FIX TRÀN CHỮ & LIÊN KẾT BẢN QUYỀN ---
+    // --- MÀN HÌNH INTRO ĐÃ ĐƯỢC FIX TRIỆT ĐỂ LỖI TRÀN CHỮ BẢN QUYỀN TÁC GIẢ ---
     if (showIntro) {
         ctx.fillStyle = "#27ae60"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
         ctx.fillText("HÀNH TRÌNH XANH LÂM ĐỒNG - BẢN 11.2", V_WIDTH / 2, 55);
@@ -399,9 +405,10 @@ function gameLoop() {
         let currentY = 115;
         introLines.forEach(line => { currentY = drawTextWrap(line, 38, currentY, 405, 18) + 24; });
 
-        // Hiện thông tin tác giả trang trọng dưới khung nội dung
-        ctx.fillStyle = "#7f8c8d"; ctx.font = "italic 12px Arial"; ctx.textAlign = "center";
-        ctx.fillText(`Tác giả: ${AUTHOR_NAME} | ${AUTHOR_CLASS}`, V_WIDTH / 2, 490);
+        // ĐÃ FIX: Tách nhỏ thông tin tác giả thành 2 dòng riêng biệt, dồn căn giữa tuyệt đối trong khung trắng
+        ctx.fillStyle = "#7f8c8d"; ctx.font = "italic 11px Arial"; ctx.textAlign = "center";
+        ctx.fillText(`Tác giả: ${AUTHOR_NAME}`, V_WIDTH / 2, 474);
+        ctx.fillText(AUTHOR_CLASS, V_WIDTH / 2, 491);
 
         ctx.fillStyle = "#27ae60"; ctx.fillRect(140, 525, 200, 46);
         ctx.fillStyle = "#ffffff"; ctx.font = "bold 15px Arial"; ctx.fillText("BẮT ĐẦU THỨ THÁCH", V_WIDTH / 2, 553);
@@ -467,11 +474,30 @@ function gameLoop() {
         requestAnimationFrame(gameLoop); return;
     }
 
+    // --- MỚI: TẬN DỤNG GIAO DIỆN PAUSE LÀM SỔ TAY TRA CỨU PHÂN LOẠI SIÊU XỊN ---
     if (isPaused) {
-        ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 22px Arial"; ctx.textAlign = "center"; ctx.fillText("ĐANG TẠM DỪNG TRÒ CHƠI", V_WIDTH / 2, 300);
+        ctx.fillStyle = "rgba(10, 24, 16, 0.9)"; ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center"; ctx.fillText("ĐANG TẠM DỪNG TRÒ CHƠI", V_WIDTH / 2, 110);
+        
+        ctx.fillStyle = "rgba(255, 255, 255, 0.08)"; ctx.beginPath(); ctx.roundRect(25, 145, 430, 375, 10); ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = "#2ecc71"; ctx.strokeRect(25, 145, 430, 375);
+        ctx.fillStyle = "#2ecc71"; ctx.font = "bold 14px Arial"; ctx.fillText("📘 SỔ TAY TRA CỨU PHÂN LOẠI NHANH", V_WIDTH / 2, 175);
+
+        let guides = [
+            { icon: "🟫 HỮU CƠ:", text: "Thức ăn thừa, rau quả hư mục, bã trà/cà phê, lá khô, vỏ trứng, xương nhỏ..." },
+            { icon: "🟦 TÁI CHẾ:", text: "Hộp carton, giấy vụn, sách cũ, vỏ lon bia/nước ngọt, chai nhựa PET sạch..." },
+            { icon: "⬜ VÔ CƠ:", text: "Túi nilon dính bẩn, băng keo, giấy ăn đã dùng, vỏ kẹo, gốm sứ mẻ, tàn thuốc..." },
+            { icon: "🟧 ĐỘC HẠI (LV4+):", text: "Pin hư, khẩu trang, bóng đèn huỳnh quang vỡ, thuốc tây quá hạn, dầu thải..." },
+            { icon: "🟥 SIÊU CẤP ĐỘC:", text: "Kim tiêm dính máu, nhiệt kế thủy ngân vỡ, vỏ chai thuốc trừ sâu..." }
+        ];
+        let gy = 215;
+        guides.forEach(g => {
+            ctx.textAlign = "left"; ctx.fillStyle = "#f1c40f"; ctx.font = "bold 12px Arial"; ctx.fillText(g.icon, 40, gy);
+            ctx.fillStyle = "#ffffff"; ctx.font = "12px Arial"; drawTextWrap(g.text, 40, gy + 16, 400, 16); gy += 56;
+        });
+
         ctx.fillStyle = "#2ecc71"; ctx.beginPath(); ctx.roundRect(pauseBtn.x, pauseBtn.y, pauseBtn.w, pauseBtn.h, 6); ctx.fill();
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px Arial"; ctx.fillText("▶", pauseBtn.x + pauseBtn.w/2, pauseBtn.y + pauseBtn.h/2 + 4);
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center"; ctx.fillText("▶", pauseBtn.x + pauseBtn.w/2, pauseBtn.y + pauseBtn.h/2 + 4);
         requestAnimationFrame(gameLoop); return;
     }
 
@@ -511,6 +537,7 @@ function gameLoop() {
             if (item.y > 580) {
                 let damage = (item.type === 'special_danger') ? 30 : 15; decreaseHealth(damage); 
                 showFeedback(item.type === 'special_danger' ? "🚨 LỌT CHẤT ĐẶC BIỆT NGUY HIỂM! -30% HP!!" : "Lọt rác nguy hại! -15% HP!", "#e74c3c"); 
+                spawnFloatingText(`-${damage} HP`, item.x, 560, "#e74c3c", "bold 18px Arial"); // Điểm bay khi lọt rác
                 playSound('wrong'); comboCount = 0; fallingItems.splice(i, 1); continue;
             }
         }
@@ -518,6 +545,7 @@ function gameLoop() {
         if (item.timeLeft <= 0) {
             let damage = (item.type === 'special_danger') ? 30 : 15; decreaseHealth(damage); 
             showFeedback(item.type === 'special_danger' ? "🚨 Nổ tung chất độc do hết giờ! -30% HP!" : "Hết giờ xử lý rác! -15% HP!", "#e74c3c");
+            spawnFloatingText(`-${damage} HP`, item.x, item.y - 20, "#e74c3c", "bold 18px Arial"); // Điểm bay khi hết giờ
             comboCount = 0; playSound('wrong'); if (draggingItem && draggingItem.id === item.id) draggingItem = null;
             fallingItems.splice(i, 1); continue;
         }
@@ -537,6 +565,16 @@ function gameLoop() {
         if (p.alpha <= 0) particles.splice(i, 1);
         else {
             ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+    }
+
+    // MỚI: Tiến trình tính toán và vẽ chữ điểm bay (Floating Text) lên màn hình
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let ft = floatingTexts[i]; ft.y += ft.vy; ft.alpha -= 0.02;
+        if (ft.alpha <= 0) { floatingTexts.splice(i, 1); } 
+        else {
+            ctx.save(); ctx.globalAlpha = ft.alpha; ctx.fillStyle = ft.color; ctx.font = ft.size; ctx.textAlign = "center";
+            ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4; ctx.fillText(ft.text, ft.x, ft.y); ctx.restore();
         }
     }
 
@@ -562,9 +600,37 @@ function gameLoop() {
         ctx.fillStyle = "#e74c3c"; ctx.font = "bold 13px Arial"; ctx.textAlign = "left"; ctx.fillText("🔥 COMBO x" + comboCount + " (+ Nhịp độ)", 20, 65);
     }
 
+    // --- ĐÃ NÂNG CẤP: KHU VỰC DANH HIỆU "MẦM XANH" CHUẨN GAMING, NỔI BẬT VÀ PHÁT SÁNG ---
     if (playerBadges.length > 0) {
-        ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.fillRect(10, 680, V_WIDTH - 20, 16);
-        ctx.fillStyle = "#ffffff"; ctx.font = "10px Arial"; ctx.textAlign = "left"; ctx.fillText("Vật phẩm thu thập: " + playerBadges.join("  "), 15, 692);
+        ctx.save();
+        let pulseAlpha = Math.abs(Math.sin(Date.now() * 0.005)); // Thuật toán băm nhịp pulsing mượt mà
+        
+        // Vẽ hộp nền gỗ ngọc bích đậm tạo chiều sâu
+        ctx.fillStyle = "rgba(12, 44, 23, 0.92)";
+        ctx.beginPath();
+        ctx.roundRect(12, 674, V_WIDTH - 24, 22, 6);
+        ctx.fill();
+        
+        // Vẽ đường viền Vàng Hoàng Kim phát sáng tỏa lan kích thích thị giác
+        ctx.strokeStyle = `rgba(241, 196, 15, ${0.4 + pulseAlpha * 0.6})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        
+        // Hiệu ứng đổ bóng phát hào quang (Neon glow look)
+        ctx.shadowColor = "#f1c40f";
+        ctx.shadowBlur = 4 + pulseAlpha * 6;
+
+        // Vẽ chữ Tiêu đề danh hiệu màu vàng kim rực rỡ
+        ctx.fillStyle = "#f1c40f";
+        ctx.font = "bold 10px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText("🏆 KHO DANH HIỆU ĐÃ ĐẠT:", 20, 689);
+
+        // Vẽ chuỗi huy hiệu emoji cỡ lớn sắc nét
+        ctx.font = "14px Arial";
+        ctx.shadowBlur = 0; // Tắt bóng để emoji không bị mờ nhòe chữ
+        ctx.fillText(playerBadges.join("  "), 165, 691);
+        ctx.restore();
     }
     requestAnimationFrame(gameLoop);
 }
@@ -587,13 +653,12 @@ function handleStart(e) {
     }
     if (isPaused) return; 
 
-    // --- SỬA LOGIC: VÀO THẲNG GAME KHÔNG HỎI TRƯỚC KHI CHƠI ---
     if (showIntro) {
         if (pos.x >= 140 && pos.x <= 340 && pos.y >= 525 && pos.y <= 571) {
             showIntro = false; gameStarted = true; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1;
             playerBadges = []; comboCount = 0; currentRewardShow = rewardsData[1]; rewardShowTimer = 130;
             playerBadges.push(rewardsData[1].name.split(" ")[0]);
-            replenishQueue(); rearrangeBins(); spawnItem(); // Đã loại bỏ triggerQuiz(1) ở đây
+            replenishQueue(); rearrangeBins(); spawnItem();
         }
         return;
     }
@@ -619,7 +684,7 @@ function handleStart(e) {
 
     if (gameOver) {
         if (pos.x >= 160 && pos.x <= 320 && pos.y >= 410 && pos.y <= 456) {
-            gameOver = false; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = []; activeDrawQueue = []; playerBadges = []; comboCount = 0;
+            gameOver = false; score = 0; quizScore = 0; lives = 3; health = 100; currentLevel = 1; fallingItems = []; activeDrawQueue = []; playerBadges = []; comboCount = 0; floatingTexts = [];
             rearrangeBins(); replenishQueue(); spawnItem();
         }
         return;
@@ -650,14 +715,22 @@ function handleEnd(e) {
         let isCorrect = (item.type === matchedBin.id) || (item.type === 'special_danger' && matchedBin.id === 'medical');
         if (isCorrect) {
             comboCount++; comboTimer = 150; let addedScore = 10;
-            if (comboCount >= 3) { addedScore = 20; playSound('combo'); showFeedback(`🔥 COMBO CHUỖI XANH! +20 Điểm 🎉`, "#e74c3c"); } 
-            else { playSound('correct'); showFeedback("Chính xác! +10 Điểm 🎉", "#2ecc71"); }
+            if (comboCount >= 3) { 
+                addedScore = 20; playSound('combo'); 
+                showFeedback(`🔥 COMBO CHUỖI XANH! +20 Điểm 🎉`, "#e74c3c"); 
+                spawnFloatingText(`🔥 COMBO +20`, item.x, item.y - 20, "#ff3838", "bold 20px Arial"); // Điểm bay dạng combo bốc lửa
+            } else { 
+                playSound('correct'); 
+                showFeedback("Chính xác! +10 Điểm 🎉", "#2ecc71"); 
+                spawnFloatingText(`+10`, item.x, item.y - 20, "#2ecc71", "bold 16px Arial"); // Điểm bay dạng chuẩn lá xanh
+            }
             score += addedScore; createParticles(item.x, item.y, binColor(matchedBin.id));
             fallingItems = fallingItems.filter(i => i.id !== item.id); checkLevelProgress();
             if (score >= 1200 && score < 1500) { bins.sort(() => Math.random() - 0.5); rearrangeBins(); }
         } else {
             let damage = (item.type === 'special_danger') ? 30 : 15; decreaseHealth(damage); comboCount = 0; playSound('wrong'); 
             showFeedback(item.type === 'special_danger' ? "🚨 SAI LẦM CHẾT NGƯỜI! Phân loại sai chất cực độc! -30% HP!" : "Nhầm thùng rồi em ơi! -15% HP!", "#e74c3c");
+            spawnFloatingText(`-${damage} HP`, item.x, item.y - 20, "#e74c3c", "bold 18px Arial"); // Điểm bay báo hiệu sát thương mất máu
             fallingItems = fallingItems.filter(i => i.id !== item.id);
         }
     }
