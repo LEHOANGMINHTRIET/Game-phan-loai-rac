@@ -2,160 +2,19 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoBin AI - THCS Chí Công - Lâm Đồng</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-
-    <style>
-        * { box-sizing: border-box; font-family: 'Lato', sans-serif; }
-        body {
-            background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 100%);
-            margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh;
-        }
-        .main-card {
-            background: #ffffff; width: 1340px; height: 830px; border-radius: 30px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.15); padding: 25px;
-            display: flex; flex-direction: column; border: 5px solid #2e7d32;
-        }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px dashed #a5d6a7; padding-bottom: 12px; margin-bottom: 15px; }
-        .header-title h1 { font-family: 'Poppins', sans-serif; color: #1b5e20; font-size: 30px; margin: 0; display: flex; align-items: center; gap: 10px; }
-        .header-title p { color: #4caf50; margin: 5px 0 0 0; font-weight: bold; font-size: 14px; letter-spacing: 1px; }
-        
-        .arduino-status {
-            background: #e8f5e9; padding: 10px 20px; border-radius: 50px;
-            display: flex; align-items: center; gap: 12px; border: 2px solid #81c784;
-        }
-        
-        .content-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 25px; flex-grow: 1; height: calc(100% - 190px); }
-        
-        .game-panel { display: flex; flex-direction: column; gap: 12px; background: #fafafa; border: 3px solid #2e7d32; border-radius: 24px; padding: 18px; }
-        .game-display-wrapper {
-            width: 100%; flex-grow: 1;
-            background: linear-gradient(to bottom, #b3e5fc 0%, #e0f7fa 60%, #c8e6c9 100%);
-            border-radius: 18px; border: 4px solid #004d40; position: relative; overflow: hidden;
-        }
-
-        /* THÙNG RÁC ĐỒ HỌA ĐẸP MẮT */
-        .game-bins-footer {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 160px;
-            background: linear-gradient(to bottom, #2e7d32 0%, #1b5e20 100%);
-            display: flex; justify-content: space-around; align-items: flex-end; padding: 0 10px 20px 10px; border-top: 5px solid #004d40;
-        }
-        .g-bin {
-            width: 130px; height: 135px; border-radius: 18px 18px 10px 10px; color: white;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            font-weight: 700; font-size: 14px; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            position: relative; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-bottom: 8px solid rgba(0,0,0,0.25);
-        }
-        .g-bin i { font-size: 42px; margin-bottom: 6px; }
-        .g-bin-organic { background: #388e3c; border: 3px solid #81c784; }
-        .g-bin-recycle { background: #1976d2; border: 3px solid #64b5f6; }
-        .g-bin-inorganic { background: #455a64; border: 3px solid #90a4ae; }
-        .bin-bounce { transform: scale(1.25) translateY(-8px); box-shadow: 0 0 35px #fff; }
-
-        /* 🌟 NÂNG CẤP ĐỒ HỌA PHẦN TỬ RÁC RƠI HOẠT HÌNH SIÊU ĐẸP */
-        .falling-trash {
-            position: absolute; z-index: 10; top: -90px; left: 50%; transform: translateX(-50%);
-            background: linear-gradient(135deg, #ffffff 0%, #f1f8e9 100%); padding: 12px 20px; border-radius: 20px;
-            box-shadow: 0 12px 24px rgba(0,0,0,0.18); display: flex; align-items: center; gap: 10px;
-            font-weight: 700; font-size: 15px; color: #1b5e20; border: 3px solid #4caf50;
-            transition: top 2.0s cubic-bezier(0.25, 0.46, 0.45, 0.94), left 2.0s ease-in-out, transform 2.0s;
-        }
-        .falling-trash .emoji { font-size: 34px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); }
-        
-        .camera-panel { background: #ffffff; border: 3px solid #1565c0; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
-        .video-container { width: 100%; flex-grow: 1; background: #000; border-radius: 18px; position: relative; overflow: hidden; border: 4px solid #1c3144; }
-        #webcam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        #ai-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; transform: scaleX(-1); }
-
-        .status-bar-bottom { display: grid; grid-template-columns: 1.2fr 0.9fr 0.9fr; gap: 15px; background: #efebe9; padding: 12px; border-radius: 15px; font-weight: bold; font-size: 15px; text-align: center; }
-        
-        .footer-action-zone { display: grid; grid-template-columns: 280px 1fr; gap: 20px; margin-top: 15px; align-items: center; }
-        .btn-main {
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); color: white; border: none; height: 60px; border-radius: 50px;
-            font-size: 20px; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 8px 20px rgba(46,125,50,0.3);
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-        }
-        .btn-main:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(46,125,50,0.4); }
-        .btn-main:disabled { background: #9e9e9e; cursor: not-allowed; box-shadow: none; transform: none; }
-        
-        .eco-dashboard {
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 2px solid #1e88e5;
-            border-radius: 18px; height: 60px; display: flex; align-items: center; justify-content: space-around;
-            padding: 0 20px; font-weight: bold; color: #0d47a1; font-size: 14px;
-        }
-        .eco-badge { display: flex; align-items: center; gap: 6px; background: white; padding: 4px 12px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-
-        #ai-result { background: #fff3e0; color: #e65100; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 16px; border: 2px solid #ffb74d; text-align: center; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hành Trình Xanh Lâm Đồng</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="main-card">
-    <div class="header">
-        <div class="header-title">
-            <h1><i class="fa-solid fa-leaf" style="color: #4caf50;"></i> HÀNH TRÌNH XANH LÂM ĐỒNG</h1>
-            <p>HỆ THỐNG GIÁO DỤC BẢO VỆ MÔ TRƯỜNG TÍCH HỢP AI REAL-TIME | THCS CHÍ CÔNG</p>
-        </div>
-        <div class="arduino-status">
-            <button onclick="ketNoiArduino()" style="background:#1565c0; color:white; border:none; padding:8px 16px; border-radius:20px; cursor:pointer; font-weight:bold; font-size:13px; box-shadow: 0 4px 10px rgba(21,101,192,0.2);">
-                <i class="fa-solid fa-plug"></i> Kết nối Thùng Rác Real
-            </button>
-            <span id="status" style="color:#c62828; font-weight:bold; font-size:14px;">Chưa kết nối IoT ❌</span>
+    <div class="game-container">
+        <div id="lightningEffect"></div>
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
         </div>
     </div>
 
-    <div class="content-grid">
-        <div class="game-panel">
-            <div style="font-weight:bold; color:#1b5e20; font-size:17px;"><i class="fa-solid fa-gamepad"></i> KHÔNG GIAN PHÂN LOẠI MÔ PHỎNG</div>
-            <div class="game-display-wrapper" id="gameDisplay">
-                <div class="game-bins-footer">
-                    <div class="g-bin g-bin-organic" id="g-bin-1"><i class="fa-solid fa-apple-whole"></i><span>HỮU CƠ</span></div>
-                    <div class="g-bin g-bin-recycle" id="g-bin-2"><i class="fa-solid fa-bottle-water"></i><span>TÁI CHẾ</span></div>
-                    <div class="g-bin g-bin-inorganic" id="g-bin-3"><i class="fa-solid fa-dumpster"></i><span>VÔ CƠ</span></div>
-                </div>
-            </div>
-            <div class="status-bar-bottom">
-                <div style="color:#1b5e20; background: white; border-radius: 8px; padding: 4px;" id="current-level">MÀN CHƠI: 1</div>
-                <div style="color:#0d47a1; background: white; border-radius: 8px; padding: 4px;">ĐIỂM SỐ: <span id="score">0</span></div>
-                <div style="color:#b71c1c; background: white; border-radius: 8px; padding: 4px;">THỜI GIAN: <span id="timer">45</span>s</div>
-            </div>
-            <div id="mission" style="background:#fff9c4; padding:12px; border-radius:12px; font-size:15px; text-align:center; font-weight:bold; border-left:6px solid #fbc02d; color:#f57f17;">
-                🤖 Hệ thống đang cấu hình Mắt thần AI... Vui lòng đợi!
-            </div>
-        </div>
-
-        <div class="camera-panel">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:bold; color:#0d47a1; font-size:16px;"><i class="fa-solid fa-robot"></i> MẮT THẦN AI QUÉT ĐỐI TƯỢNG KHUNG THỰC</span>
-                <button id="btn-toggle-cam" style="background:#37474f; color:white; border:none; padding:6px 12px; border-radius:20px; cursor:pointer;" onclick="batTatCamera()">📷 Tắt Camera</button>
-            </div>
-            <div class="video-container">
-                <video id="webcam" autoplay playsinline muted></video>
-                <canvas id="ai-canvas"></canvas>
-            </div>
-            <div id="ai-result">Hệ thống AI đang khởi động camera nền...</div>
-        </div>
-    </div>
-
-    <div class="footer-action-zone">
-        <button id="btn-start" class="btn-main" onclick="batDauGame()" disabled>
-            <i class="fa-solid fa-circle-play"></i> BẮT ĐẦU THỬ THÁCH
-        </button>
-        <div class="eco-dashboard">
-            <span style="font-size: 13px;"><i class="fa-solid fa-circle-info"></i> <b>HƯỚNG DẪN:</b> Lắng nghe hiệu lệnh MC, giơ đúng loại rác yêu cầu trước Camera để ghi điểm!</span>
-            <div class="eco-badge"><i class="fa-solid fa-seedling" style="color:#4caf50;"></i> Giảm Co2: <span id="co2-val">0</span>g</div>
-            <div class="eco-badge"><i class="fa-solid fa-star" style="color:#ffb300;"></i> Danh hiệu: <span id="eco-rank">Tập sự</span></div>
-        </div>
-    </div>
-</div>
-
-<script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
